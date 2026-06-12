@@ -315,6 +315,7 @@
         .spinner { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
+<base target="_blank">
 </head>
 <body>
 
@@ -599,7 +600,6 @@
 
         // ==================== INIT ====================
         document.addEventListener('DOMContentLoaded', async () => {
-            // Check URL params for customer view
             const params = new URLSearchParams(window.location.search);
             const view = params.get('view');
             const tableId = params.get('table_id');
@@ -610,7 +610,6 @@
                 return;
             }
 
-            // Check auth
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
                 state.user = session.user;
@@ -620,7 +619,6 @@
                 showView('login');
             }
 
-            // Setup form listeners
             document.getElementById('login-form').addEventListener('submit', handleLogin);
             document.getElementById('add-table-form').addEventListener('submit', handleAddTable);
             document.getElementById('add-menu-form').addEventListener('submit', handleSaveMenuItem);
@@ -629,7 +627,6 @@
                 handleSetup();
             });
 
-            // Nav items
             document.querySelectorAll('.nav-item[data-tab]').forEach(item => {
                 item.addEventListener('click', () => switchTab(item.dataset.tab));
             });
@@ -719,35 +716,32 @@
             document.getElementById('stat-active-tables').textContent = activeCount;
 
             if (state.tables.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state" style="grid-column:1/-1;">
-                        <i class="fas fa-chair"></i>
-                        <h3>No Tables Yet</h3>
-                        <p>Add your first table to get started</p>
-                    </div>`;
+                container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><i class="fas fa-chair"></i><h3>No Tables Yet</h3><p>Add your first table to get started</p></div>';
                 return;
             }
 
-            container.innerHTML = state.tables.map(table => {
+            let html = '';
+            for (const table of state.tables) {
                 const isActive = table.is_active;
-                return `
-                <div class="card table-card">
-                    <span class="status-badge ${isActive ? 'active' : 'inactive'}">${isActive ? 'Active' : 'Available'}</span>
-                    <div class="card-body">
-                        <div class="table-number">${table.table_number}</div>
-                        <div class="table-meta">${isActive ? 'Session in progress' : 'Ready for guests'}</div>
-                        <div class="table-actions">
-                            ${!isActive ? 
-                                '<button class="btn btn-success btn-sm" onclick="openTable('' + table.id + '')"><i class="fas fa-play"></i> Open</button>' :
-                                '<button class="btn btn-primary btn-sm" onclick="showQR('' + table.id + '')"><i class="fas fa-qrcode"></i> QR</button>' +
-                                '<button class="btn btn-secondary btn-sm" onclick="showBill('' + table.id + '')"><i class="fas fa-file-invoice"></i> Bill</button>' +
-                                '<button class="btn btn-danger btn-sm" onclick="closeTable('' + table.id + '')"><i class="fas fa-stop"></i> Close</button>'
-                            }
-                            <button class="btn btn-secondary btn-sm" onclick="deleteTable('${table.id}')" style="margin-left:auto;"><i class="fas fa-trash"></i></button>
-                        </div>
-                    </div>
-                </div>`;
-            }).join('');
+                html += '<div class="card table-card">';
+                html += '<span class="status-badge ' + (isActive ? 'active' : 'inactive') + '">' + (isActive ? 'Active' : 'Available') + '</span>';
+                html += '<div class="card-body">';
+                html += '<div class="table-number">' + table.table_number + '</div>';
+                html += '<div class="table-meta">' + (isActive ? 'Session in progress' : 'Ready for guests') + '</div>';
+                html += '<div class="table-actions">';
+
+                if (!isActive) {
+                    html += '<button class="btn btn-success btn-sm" onclick="openTable('' + table.id + '')"><i class="fas fa-play"></i> Open</button>';
+                } else {
+                    html += '<button class="btn btn-primary btn-sm" onclick="showQR('' + table.id + '')"><i class="fas fa-qrcode"></i> QR</button>';
+                    html += '<button class="btn btn-secondary btn-sm" onclick="showBill('' + table.id + '')"><i class="fas fa-file-invoice"></i> Bill</button>';
+                    html += '<button class="btn btn-danger btn-sm" onclick="closeTable('' + table.id + '')"><i class="fas fa-stop"></i> Close</button>';
+                }
+
+                html += '<button class="btn btn-secondary btn-sm" onclick="deleteTable('' + table.id + '')" style="margin-left:auto;"><i class="fas fa-trash"></i></button>';
+                html += '</div></div></div>';
+            }
+            container.innerHTML = html;
         }
 
         async function handleAddTable(e) {
@@ -858,35 +852,36 @@
         function renderMenu() {
             const container = document.getElementById('menu-container');
             if (state.menuItems.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state" style="grid-column:1/-1;">
-                        <i class="fas fa-utensils"></i>
-                        <h3>Menu is Empty</h3>
-                        <p>Add your first dish to get started</p>
-                    </div>`;
+                container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><i class="fas fa-utensils"></i><h3>Menu is Empty</h3><p>Add your first dish to get started</p></div>';
                 return;
             }
 
-            container.innerHTML = state.menuItems.map(item => {
-                return '<div class="card menu-item-card ' + (!item.is_available ? 'opacity-50' : '') + '">' +
-                    '<img src="' + (item.photo_url || 'https://via.placeholder.com/400x300?text=No+Image') + '" class="menu-item-img" alt="' + item.name + '">' +
-                    '<div class="menu-item-body">' +
-                    '<span class="menu-item-category">' + item.category + '</span>' +
-                    '<div class="menu-item-name">' + item.name + '</div>' +
-                    '<div class="menu-item-desc">' + (item.description || '') + '</div>' +
-                    '<div class="menu-item-footer">' +
-                    '<div class="menu-item-price">$' + parseFloat(item.price).toFixed(2) + '</div>' +
-                    '<div class="menu-item-actions">' +
-                    '<button class="btn btn-sm btn-secondary" onclick="editMenuItem('' + item.id + '')"><i class="fas fa-edit"></i></button>' +
-                    '<button class="btn btn-sm btn-danger" onclick="deleteMenuItem('' + item.id + '')"><i class="fas fa-trash"></i></button>' +
-                    '</div></div></div></div>';
-            }).join('');
+            let html = '';
+            for (const item of state.menuItems) {
+                html += '<div class="card menu-item-card ' + (!item.is_available ? 'opacity-50' : '') + '">';
+                html += '<img src="' + (item.photo_url || 'https://via.placeholder.com/400x300?text=No+Image') + '" class="menu-item-img" alt="' + item.name + '">';
+                html += '<div class="menu-item-body">';
+                html += '<span class="menu-item-category">' + item.category + '</span>';
+                html += '<div class="menu-item-name">' + item.name + '</div>';
+                html += '<div class="menu-item-desc">' + (item.description || '') + '</div>';
+                html += '<div class="menu-item-footer">';
+                html += '<div class="menu-item-price">$' + parseFloat(item.price).toFixed(2) + '</div>';
+                html += '<div class="menu-item-actions">';
+                html += '<button class="btn btn-sm btn-secondary" onclick="editMenuItem('' + item.id + '')"><i class="fas fa-edit"></i></button>';
+                html += '<button class="btn btn-sm btn-danger" onclick="deleteMenuItem('' + item.id + '')"><i class="fas fa-trash"></i></button>';
+                html += '</div></div></div></div>';
+            }
+            container.innerHTML = html;
         }
 
         function updateCategoryList() {
             const categories = [...new Set(state.menuItems.map(i => i.category))];
             const datalist = document.getElementById('category-list');
-            datalist.innerHTML = categories.map(c => '<option value="' + c + '">').join('');
+            let html = '';
+            for (const c of categories) {
+                html += '<option value="' + c + '">';
+            }
+            datalist.innerHTML = html;
         }
 
         function setPhotoType(type) {
@@ -975,29 +970,28 @@
         function renderOrders() {
             const container = document.getElementById('orders-container');
             if (state.orders.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-receipt"></i>
-                        <h3>No Orders Yet</h3>
-                        <p>Orders will appear here when customers place them</p>
-                    </div>`;
+                container.innerHTML = '<div class="empty-state"><i class="fas fa-receipt"></i><h3>No Orders Yet</h3><p>Orders will appear here when customers place them</p></div>';
                 return;
             }
 
-            container.innerHTML = state.orders.map(order => {
+            let html = '';
+            for (const order of state.orders) {
                 const items = order.items || [];
                 const time = new Date(order.created_at).toLocaleTimeString();
-                return '<div class="card order-card">' +
-                    '<div class="order-table-badge">' + order.table_number + '</div>' +
-                    '<div class="order-details">' +
-                    '<div class="order-header">' +
-                    '<div><div style="font-weight:700;">Order #' + order.id.substr(-6).toUpperCase() + '</div>' +
-                    '<div class="order-time">' + time + '</div></div>' +
-                    '<div class="order-total">$' + parseFloat(order.total_amount).toFixed(2) + '</div></div>' +
-                    '<div class="order-items">' +
-                    items.map(i => '<span class="order-item-tag">' + i.quantity + 'x ' + i.name + '</span>').join('') +
-                    '</div></div></div>';
-            }).join('');
+                html += '<div class="card order-card">';
+                html += '<div class="order-table-badge">' + order.table_number + '</div>';
+                html += '<div class="order-details">';
+                html += '<div class="order-header">';
+                html += '<div><div style="font-weight:700;">Order #' + order.id.substr(-6).toUpperCase() + '</div>';
+                html += '<div class="order-time">' + time + '</div></div>';
+                html += '<div class="order-total">$' + parseFloat(order.total_amount).toFixed(2) + '</div></div>';
+                html += '<div class="order-items">';
+                for (const i of items) {
+                    html += '<span class="order-item-tag">' + i.quantity + 'x ' + i.name + '</span>';
+                }
+                html += '</div></div></div>';
+            }
+            container.innerHTML = html;
         }
 
         function subscribeToOrders() {
@@ -1042,28 +1036,27 @@
             const newOrders = state.orders.filter(o => o.is_new);
 
             if (newOrders.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state" style="grid-column:1/-1;color:#64748b;">
-                        <i class="fas fa-mug-hot" style="font-size:64px;"></i>
-                        <h3 style="color:white;">All Caught Up!</h3>
-                        <p>New orders will appear here automatically</p>
-                    </div>`;
+                container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;color:#64748b;"><i class="fas fa-mug-hot" style="font-size:64px;"></i><h3 style="color:white;">All Caught Up!</h3><p>New orders will appear here automatically</p></div>';
                 return;
             }
 
-            container.innerHTML = newOrders.map(order => {
+            let html = '';
+            for (const order of newOrders) {
                 const items = order.items || [];
                 const time = new Date(order.created_at);
                 const minsAgo = Math.floor((Date.now() - time) / 60000);
-                return '<div class="kitchen-card" id="kitchen-' + order.id + '">' +
-                    '<div class="kitchen-table">' + order.table_number + '</div>' +
-                    '<div class="kitchen-time">' + (minsAgo < 1 ? 'Just now' : minsAgo + ' min ago') + '</div>' +
-                    '<div class="kitchen-items">' +
-                    items.map(i => '<div class="kitchen-item"><span>' + i.name + '</span><span class="kitchen-item-qty">x' + i.quantity + '</span></div>').join('') +
-                    '</div>' +
-                    '<button class="btn btn-dark w-full" onclick="markOrderDone('' + order.id + '')">' +
-                    '<i class="fas fa-check"></i> Mark Done</button></div>';
-            }).join('');
+                html += '<div class="kitchen-card" id="kitchen-' + order.id + '">';
+                html += '<div class="kitchen-table">' + order.table_number + '</div>';
+                html += '<div class="kitchen-time">' + (minsAgo < 1 ? 'Just now' : minsAgo + ' min ago') + '</div>';
+                html += '<div class="kitchen-items">';
+                for (const i of items) {
+                    html += '<div class="kitchen-item"><span>' + i.name + '</span><span class="kitchen-item-qty">x' + i.quantity + '</span></div>';
+                }
+                html += '</div>';
+                html += '<button class="btn btn-dark w-full" onclick="markOrderDone('' + order.id + '')"><i class="fas fa-check"></i> Mark Done</button>';
+                html += '</div>';
+            }
+            container.innerHTML = html;
         }
 
         async function markOrderDone(orderId) {
@@ -1083,10 +1076,7 @@
                 .single();
 
             if (!session) {
-                document.body.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;padding:20px;text-align:center;">' +
-                    '<i class="fas fa-times-circle" style="font-size:64px;color:var(--danger);margin-bottom:20px;"></i>' +
-                    '<h1 style="margin-bottom:10px;">Session Expired</h1>' +
-                    '<p style="color:var(--text-secondary);">Please ask staff for a new QR code.</p></div>';
+                document.body.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;padding:20px;text-align:center;"><i class="fas fa-times-circle" style="font-size:64px;color:var(--danger);margin-bottom:20px;"></i><h1 style="margin-bottom:10px;">Session Expired</h1><p style="color:var(--text-secondary);">Please ask staff for a new QR code.</p></div>';
                 return;
             }
 
@@ -1111,9 +1101,11 @@
         function renderCustomerCategories() {
             const categories = ['all', ...new Set(state.customerMenu.map(i => i.category))];
             const container = document.getElementById('category-tabs');
-            container.innerHTML = categories.map(cat => {
-                return '<button class="category-tab ' + (cat === 'all' ? 'active' : '') + '" onclick="filterCategory('' + cat + '')">' + (cat === 'all' ? 'All' : cat) + '</button>';
-            }).join('');
+            let html = '';
+            for (const cat of categories) {
+                html += '<button class="category-tab ' + (cat === 'all' ? 'active' : '') + '" onclick="filterCategory('' + cat + '')">' + (cat === 'all' ? 'All' : cat) + '</button>';
+            }
+            container.innerHTML = html;
         }
 
         function filterCategory(category) {
@@ -1126,15 +1118,17 @@
             const container = document.getElementById('customer-menu');
             const items = category === 'all' ? state.customerMenu : state.customerMenu.filter(i => i.category === category);
 
-            container.innerHTML = items.map(item => {
-                return '<div class="customer-item">' +
-                    '<img src="' + (item.photo_url || 'https://via.placeholder.com/300x200?text=No+Image') + '" class="customer-item-img" alt="' + item.name + '">' +
-                    '<div class="customer-item-body">' +
-                    '<div class="customer-item-name">' + item.name + '</div>' +
-                    '<div class="customer-item-price">$' + parseFloat(item.price).toFixed(2) + '</div>' +
-                    '<button class="add-btn" onclick="addToCart('' + item.id + '')">+ Add</button>' +
-                    '</div></div>';
-            }).join('');
+            let html = '';
+            for (const item of items) {
+                html += '<div class="customer-item">';
+                html += '<img src="' + (item.photo_url || 'https://via.placeholder.com/300x200?text=No+Image') + '" class="customer-item-img" alt="' + item.name + '">';
+                html += '<div class="customer-item-body">';
+                html += '<div class="customer-item-name">' + item.name + '</div>';
+                html += '<div class="customer-item-price">$' + parseFloat(item.price).toFixed(2) + '</div>';
+                html += '<button class="add-btn" onclick="addToCart('' + item.id + '')">+ Add</button>';
+                html += '</div></div>';
+            }
+            container.innerHTML = html;
         }
 
         // ==================== CART ====================
@@ -1178,18 +1172,20 @@
             if (state.cart.length === 0) {
                 container.innerHTML = '<div class="empty-state"><i class="fas fa-shopping-bag"></i><h3>Your order is empty</h3></div>';
             } else {
-                container.innerHTML = state.cart.map(item => {
-                    return '<div class="cart-item">' +
-                        '<img src="' + (item.photo_url || 'https://via.placeholder.com/100?text=No+Image') + '" class="cart-item-img">' +
-                        '<div class="cart-item-info">' +
-                        '<div class="cart-item-name">' + item.name + '</div>' +
-                        '<div class="cart-item-price">$' + parseFloat(item.price).toFixed(2) + '</div>' +
-                        '<div class="cart-item-qty">' +
-                        '<button class="qty-btn" onclick="updateCartQty('' + item.menu_item_id + '', -1)">-</button>' +
-                        '<span style="font-weight:700;min-width:24px;text-align:center;">' + item.quantity + '</span>' +
-                        '<button class="qty-btn" onclick="updateCartQty('' + item.menu_item_id + '', 1)">+</button>' +
-                        '</div></div></div>';
-                }).join('');
+                let html = '';
+                for (const item of state.cart) {
+                    html += '<div class="cart-item">';
+                    html += '<img src="' + (item.photo_url || 'https://via.placeholder.com/100?text=No+Image') + '" class="cart-item-img">';
+                    html += '<div class="cart-item-info">';
+                    html += '<div class="cart-item-name">' + item.name + '</div>';
+                    html += '<div class="cart-item-price">$' + parseFloat(item.price).toFixed(2) + '</div>';
+                    html += '<div class="cart-item-qty">';
+                    html += '<button class="qty-btn" onclick="updateCartQty('' + item.menu_item_id + '', -1)">-</button>';
+                    html += '<span style="font-weight:700;min-width:24px;text-align:center;">' + item.quantity + '</span>';
+                    html += '<button class="qty-btn" onclick="updateCartQty('' + item.menu_item_id + '', 1)">+</button>';
+                    html += '</div></div></div>';
+                }
+                container.innerHTML = html;
             }
 
             const total = state.cart.reduce((sum, i) => sum + (i.price * i.quantity), 0);
@@ -1252,18 +1248,18 @@
                 });
             });
 
-            let billHtml = '<div class="bill-header">' +
-                '<div class="bill-title">DINEQR</div>' +
-                '<div style="font-size:13px;color:var(--text-secondary);margin-top:4px;">Restaurant Bill</div>' +
-                '<div class="bill-table">' + table.table_number + '</div>' +
-                '<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">' + new Date().toLocaleString() + '</div></div>';
+            let billHtml = '<div class="bill-header">';
+            billHtml += '<div class="bill-title">DINEQR</div>';
+            billHtml += '<div style="font-size:13px;color:var(--text-secondary);margin-top:4px;">Restaurant Bill</div>';
+            billHtml += '<div class="bill-table">' + table.table_number + '</div>';
+            billHtml += '<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">' + new Date().toLocaleString() + '</div></div>';
 
-            allItems.forEach(item => {
+            for (const item of allItems) {
                 billHtml += '<div class="bill-row"><span>' + item.quantity + ' x ' + item.name + '</span><span>$' + (item.price * item.quantity).toFixed(2) + '</span></div>';
-            });
+            }
 
-            billHtml += '<div class="bill-row total"><span>TOTAL</span><span>$' + total.toFixed(2) + '</span></div>' +
-                '<div class="bill-footer">Thank you for dining with us!</div>';
+            billHtml += '<div class="bill-row total"><span>TOTAL</span><span>$' + total.toFixed(2) + '</span></div>';
+            billHtml += '<div class="bill-footer">Thank you for dining with us!</div>';
 
             document.getElementById('bill-content').innerHTML = billHtml;
             openModal('bill-modal');
