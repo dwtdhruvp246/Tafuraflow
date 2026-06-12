@@ -8,18 +8,21 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         :root {
-            --primary: #2563eb;
-            --primary-dark: #1d4ed8;
-            --success: #16a34a;
-            --warning: #ca8a04;
-            --danger: #dc2626;
-            --dark: #1e293b;
-            --light: #f8fafc;
-            --gray: #64748b;
-            --border: #e2e8f0;
+            --primary: #2563eb; --primary-dark: #1d4ed8; --success: #16a34a; --warning: #ca8a04;
+            --danger: #dc2626; --dark: #1e293b; --light: #f8fafc; --gray: #64748b; --border: #e2e8f0;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f1f5f9; color: #334155; }
+        .btn { padding: 0.625rem 1.25rem; border: none; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-secondary { background: white; color: var(--dark); border: 1px solid var(--border); }
+        .btn-sm { padding: 0.375rem 0.75rem; font-size: 0.75rem; }
+        .btn-lg { padding: 0.875rem 1.5rem; font-size: 1rem; }
 
         /* Login */
         .login-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
@@ -28,19 +31,10 @@
         .login-box p { color: var(--gray); margin-bottom: 1.5rem; }
         .form-group { margin-bottom: 1rem; }
         .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.875rem; }
-        .form-group input { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; font-size: 1rem; }
-        .form-group input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; }
-        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
-        .btn-success { background: var(--success); color: white; }
-        .btn-success:hover:not(:disabled) { background: #15803d; }
-        .btn-danger { background: var(--danger); color: white; }
-        .btn-danger:hover:not(:disabled) { background: #b91c1c; }
-        .btn-warning { background: var(--warning); color: white; }
-        .btn-secondary { background: white; color: var(--dark); border: 1px solid var(--border); }
-        .btn-sm { padding: 0.5rem 0.75rem; font-size: 0.75rem; }
+        .form-group input, .form-group select { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; font-size: 1rem; background: white; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; font-size: 0.875rem; resize: vertical; font-family: inherit; }
+        textarea:focus { outline: none; border-color: var(--primary); }
 
         /* Layout */
         .app-layout { display: flex; min-height: 100vh; }
@@ -50,73 +44,72 @@
         .sidebar-nav { flex: 1; padding: 1rem 0; }
         .sidebar-nav a { display: flex; align-items: center; gap: 0.75rem; padding: 0.875rem 1.5rem; color: #94a3b8; text-decoration: none; font-size: 0.875rem; transition: all 0.2s; border-left: 3px solid transparent; }
         .sidebar-nav a:hover, .sidebar-nav a.active { background: #334155; color: white; border-left-color: var(--primary); }
+        .sidebar-nav a.hidden { display: none; }
         .sidebar-footer { padding: 1rem 1.5rem; border-top: 1px solid #334155; }
         .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
         .top-bar { height: 64px; background: white; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 1.5rem; }
         .content-area { flex: 1; overflow-y: auto; padding: 1.5rem; }
         .mobile-toggle { display: none; background: none; border: none; font-size: 1.5rem; cursor: pointer; }
 
-        /* Sections */
         .section { display: none; }
         .section.active { display: block; }
 
-        /* Cards */
         .card { background: white; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 1.5rem; margin-bottom: 1.5rem; }
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem; }
         .card-title { font-size: 1.125rem; font-weight: 600; color: var(--dark); }
 
-        /* Stats */
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-        .stat-card { background: white; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .stat-value { font-size: 1.875rem; font-weight: 700; color: var(--primary); }
+        /* Dashboard Stats */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .stat-card { background: white; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .stat-value { font-size: 2.5rem; font-weight: 700; color: var(--primary); }
         .stat-label { color: var(--gray); font-size: 0.875rem; margin-top: 0.25rem; }
+        .stat-fraction { font-size: 0.875rem; color: var(--gray); margin-top: 0.25rem; }
 
-        /* Tables Grid */
-        .tables-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
-        .table-card { background: white; border-radius: 0.75rem; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 4px solid var(--primary); transition: transform 0.2s; }
+        /* Tables */
+        .tables-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
+        .table-card { background: white; border-radius: 0.75rem; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 4px solid var(--gray); transition: transform 0.2s; }
         .table-card:hover { transform: translateY(-2px); }
-        .table-card.closed { border-left-color: var(--gray); opacity: 0.7; }
+        .table-card.occupied { border-left-color: var(--success); }
+        .table-card.available { border-left-color: var(--gray); }
         .table-number { font-size: 1.5rem; font-weight: 700; color: var(--dark); }
         .table-status { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; margin-top: 0.5rem; text-transform: uppercase; }
-        .status-active { background: #dcfce7; color: #166534; }
-        .status-closed { background: #f1f5f9; color: var(--gray); }
+        .status-available { background: #f1f5f9; color: var(--gray); }
+        .status-occupied { background: #dcfce7; color: #166534; }
+        .status-closed { background: #fee2e2; color: #991b1b; }
         .table-actions { display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap; }
+        .table-orders { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.875rem; }
+        .table-order-item { display: flex; justify-content: space-between; padding: 0.25rem 0; }
 
         /* Menu */
-        .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+        .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
         .menu-item-card { background: white; border-radius: 0.75rem; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .menu-item-image { height: 140px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; color: var(--gray); font-size: 2rem; overflow: hidden; }
+        .menu-item-image { height: 160px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; color: var(--gray); font-size: 2rem; overflow: hidden; position: relative; }
         .menu-item-image img { width: 100%; height: 100%; object-fit: cover; }
         .menu-item-info { padding: 1rem; }
         .menu-item-name { font-weight: 600; margin-bottom: 0.25rem; }
         .menu-item-meta { color: var(--gray); font-size: 0.875rem; margin-bottom: 0.5rem; }
         .menu-item-footer { display: flex; justify-content: space-between; align-items: center; }
         .menu-item-price { color: var(--primary); font-weight: 700; }
+        .menu-item-actions { display: flex; gap: 0.5rem; align-items: center; }
+        .toggle-switch { position: relative; width: 44px; height: 24px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #cbd5e1; border-radius: 24px; transition: 0.3s; }
+        .toggle-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+        .toggle-switch input:checked + .toggle-slider { background: var(--success); }
+        .toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
+
         .category-tags { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
         .category-tag { background: #eff6ff; color: var(--primary); padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.875rem; display: flex; align-items: center; gap: 0.5rem; }
         .category-tag button { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 1rem; line-height: 1; }
 
-        /* Orders */
-        .orders-list { display: flex; flex-direction: column; gap: 1rem; }
-        .order-card { background: white; border-radius: 0.75rem; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem; }
-        .order-table { font-weight: 700; color: var(--dark); font-size: 1.125rem; }
-        .order-time { color: var(--gray); font-size: 0.875rem; }
-        .order-status { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
-        .status-pending { background: #fef3c7; color: #92400e; }
-        .status-preparing { background: #dbeafe; color: #1e40af; }
-        .status-ready { background: #dcfce7; color: #166534; }
-        .status-served { background: #f1f5f9; color: var(--gray); }
-        .status-cancelled { background: #fee2e2; color: #991b1b; }
-        .order-items { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
-        .order-item-row { display: flex; justify-content: space-between; padding: 0.375rem 0; font-size: 0.875rem; }
-        .order-item-note { color: var(--gray); font-style: italic; margin-left: 0.5rem; }
-        .order-total { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 2px solid var(--border); font-weight: 700; text-align: right; font-size: 1.125rem; }
-        .order-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
-
         /* Kitchen */
-        .kitchen-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
-        .kitchen-card { background: white; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-top: 4px solid var(--warning); }
+        .dept-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .dept-tab { padding: 0.625rem 1.25rem; border-radius: 0.5rem; border: 1px solid var(--border); background: white; font-size: 0.875rem; font-weight: 500; cursor: pointer; }
+        .dept-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .kitchen-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+        .kitchen-card { background: white; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-top: 4px solid var(--warning); cursor: pointer; transition: all 0.3s; }
+        .kitchen-card:hover { transform: translateY(-2px); }
         .kitchen-card.preparing { border-top-color: var(--primary); }
         .kitchen-card.ready { border-top-color: var(--success); }
         .kitchen-table { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
@@ -124,12 +117,11 @@
         .kitchen-items { margin-bottom: 1rem; }
         .kitchen-item { padding: 0.5rem 0; border-bottom: 1px solid #f1f5f9; font-size: 1.125rem; }
         .kitchen-item strong { color: var(--primary); margin-right: 0.5rem; }
-        .kitchen-actions { display: flex; gap: 0.5rem; }
-        .kitchen-actions .btn { flex: 1; padding: 0.875rem; font-size: 1rem; }
+        .kitchen-status { padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 600; text-align: center; }
 
         /* Bills */
-        .bill-card { background: white; border-radius: 0.75rem; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .bill-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+        .bill-card { background: white; border-radius: 0.75rem; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1rem; }
+        .bill-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem; }
         .bill-table { font-weight: 700; font-size: 1.125rem; }
         .bill-status { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
         .status-unpaid { background: #fef3c7; color: #92400e; }
@@ -139,38 +131,43 @@
         .bill-total { display: flex; justify-content: space-between; font-weight: 700; font-size: 1.125rem; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 2px solid var(--border); }
         .bill-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
 
+        /* Settings */
+        .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; }
+        .perm-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-top: 0.5rem; }
+        .perm-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; }
+
         /* Modal */
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
         .modal-overlay.active { display: flex; }
-        .modal { background: white; border-radius: 1rem; padding: 2rem; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; position: relative; }
+        .modal { background: white; border-radius: 1rem; padding: 2rem; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; position: relative; }
         .modal-close { position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--gray); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 0.25rem; }
-        .modal-close:hover { background: #f1f5f9; }
         .modal-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; padding-right: 2rem; }
+        .timer { font-family: monospace; color: var(--warning); font-weight: 600; }
 
-        /* Forms */
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
-        .form-row input, .form-row select { width: 100%; padding: 0.625rem; border: 1px solid var(--border); border-radius: 0.5rem; font-size: 0.875rem; }
-        .form-row input:focus, .form-row select:focus { outline: none; border-color: var(--primary); }
-        textarea { width: 100%; padding: 0.625rem; border: 1px solid var(--border); border-radius: 0.5rem; font-size: 0.875rem; resize: vertical; font-family: inherit; }
-        textarea:focus { outline: none; border-color: var(--primary); }
+        /* Lists */
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: white; border-radius: 0.5rem; margin-bottom: 0.5rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .list-item-info { flex: 1; }
+        .list-item-title { font-weight: 600; }
+        .list-item-sub { color: var(--gray); font-size: 0.875rem; }
 
-        /* Empty state */
         .empty-state { text-align: center; padding: 3rem; color: var(--gray); }
         .empty-state-icon { font-size: 3rem; margin-bottom: 1rem; }
 
-        /* Responsive */
         @media (max-width: 768px) {
             .sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 40; transform: translateX(-100%); transition: transform 0.3s; }
             .sidebar.open { transform: translateX(0); }
             .mobile-toggle { display: block; }
-            .form-row { grid-template-columns: 1fr; }
-            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .settings-grid { grid-template-columns: 1fr; }
             .kitchen-grid { grid-template-columns: 1fr; }
+            .tables-grid { grid-template-columns: 1fr; }
+            .menu-grid { grid-template-columns: 1fr; }
         }
     </style>
+<base target="_blank">
 </head>
 <body>
-    <!-- LOGIN SCREEN -->
+    <!-- LOGIN -->
     <div id="login-section" class="login-container">
         <div class="login-box">
             <h1>🔐 DineQR Admin</h1>
@@ -185,26 +182,23 @@
             </div>
             <div id="login-error" style="color:var(--danger);margin-bottom:1rem;font-size:0.875rem;min-height:1.25rem;"></div>
             <button id="login-btn" class="btn btn-primary" style="width:100%;" onclick="handleLogin()">Sign In</button>
-            <p style="margin-top:1rem;font-size:0.75rem;color:var(--gray);text-align:center;">
-                Create your admin user in Supabase Auth Dashboard first.
-            </p>
         </div>
     </div>
 
-    <!-- APP LAYOUT -->
+    <!-- APP -->
     <div id="app-section" class="app-layout" style="display:none;">
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <h2>🍽️ DineQR</h2>
                 <p style="color:#94a3b8;font-size:0.75rem;margin-top:0.25rem;">Restaurant OS</p>
             </div>
-            <nav class="sidebar-nav">
+            <nav class="sidebar-nav" id="sidebar-nav">
                 <a href="#" data-section="dashboard" class="active" onclick="showSection('dashboard');return false;">📊 Dashboard</a>
                 <a href="#" data-section="tables" onclick="showSection('tables');return false;">🪑 Tables</a>
                 <a href="#" data-section="menu" onclick="showSection('menu');return false;">🍔 Menu</a>
-                <a href="#" data-section="orders" onclick="showSection('orders');return false;">📋 Orders</a>
                 <a href="#" data-section="kitchen" onclick="showSection('kitchen');return false;">👨‍🍳 Kitchen</a>
                 <a href="#" data-section="bills" onclick="showSection('bills');return false;">🧾 Bills</a>
+                <a href="#" data-section="settings" onclick="showSection('settings');return false;">⚙️ Settings</a>
             </nav>
             <div class="sidebar-footer">
                 <div style="font-size:0.75rem;margin-bottom:0.75rem;word-break:break-all;color:#94a3b8;" id="user-email">Admin</div>
@@ -218,36 +212,25 @@
                 <h3 id="page-title">Dashboard</h3>
                 <div></div>
             </div>
-
             <div class="content-area">
+
                 <!-- DASHBOARD -->
                 <section id="dashboard-section" class="section active">
                     <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-value" id="dash-tables">0</div>
-                            <div class="stat-label">Active Tables</div>
+                        <div class="stat-card" onclick="showDashboardDetail('occupied')">
+                            <div class="stat-value" id="dash-occupied">0/0</div>
+                            <div class="stat-label">Occupied Tables</div>
+                            <div class="stat-fraction">Click to view occupied tables</div>
                         </div>
-                        <div class="stat-card">
-                            <div class="stat-value" id="dash-pending">0</div>
+                        <div class="stat-card" onclick="showDashboardDetail('pending')">
+                            <div class="stat-value" id="dash-pending">0/0</div>
                             <div class="stat-label">Pending Orders</div>
+                            <div class="stat-fraction">Tables occupied but not ordered</div>
                         </div>
-                        <div class="stat-card">
+                        <div class="stat-card" onclick="showDashboardDetail('preparing')">
                             <div class="stat-value" id="dash-preparing">0</div>
                             <div class="stat-label">Preparing</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value" id="dash-revenue">$0.00</div>
-                            <div class="stat-label">Today's Revenue</div>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Quick Actions</h3>
-                        </div>
-                        <div style="display:flex;gap:1rem;flex-wrap:wrap;">
-                            <button class="btn btn-primary" onclick="showSection('tables')">Manage Tables</button>
-                            <button class="btn btn-success" onclick="showSection('menu')">Edit Menu</button>
-                            <button class="btn btn-warning" onclick="showSection('kitchen')">Kitchen View</button>
+                            <div class="stat-fraction">Tables waiting for food</div>
                         </div>
                     </div>
                 </section>
@@ -278,71 +261,96 @@
                         </div>
                         <div id="categories-list" class="category-tags"></div>
                     </div>
-
                     <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Add Menu Item</h3>
+                        <div class="card-header"><h3 class="card-title">Add Menu Item</h3></div>
+                        <div class="form-group">
+                            <input type="text" id="item-name" placeholder="Item name *" style="width:100%;padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;margin-bottom:0.75rem;">
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
+                                <input type="number" id="item-price" placeholder="Price *" step="0.01" min="0" style="padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;">
+                                <select id="item-category" style="padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;background:white;"><option value="">Category</option></select>
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
+                                <select id="item-department" style="padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;background:white;"><option value="">Department</option></select>
+                                <input type="file" id="item-image-file" accept="image/*" style="padding:0.375rem;">
+                            </div>
+                            <input type="text" id="item-image-url" placeholder="Or paste image URL (optional)" style="width:100%;padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;margin-bottom:0.75rem;">
+                            <textarea id="item-desc" placeholder="Description (optional)" rows="2" style="margin-bottom:0.75rem;"></textarea>
+                            <button class="btn btn-success" onclick="addMenuItem()">Add Menu Item</button>
                         </div>
-                        <div class="form-row">
-                            <input type="text" id="item-name" placeholder="Item name *">
-                            <input type="number" id="item-price" placeholder="Price *" step="0.01" min="0">
-                        </div>
-                        <div style="margin-bottom:1rem;">
-                            <select id="item-category" style="width:100%;padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;background:white;">
-                                <option value="">Select Category (optional)</option>
-                            </select>
-                        </div>
-                        <div style="margin-bottom:1rem;">
-                            <textarea id="item-desc" placeholder="Description (optional)" rows="2"></textarea>
-                        </div>
-                        <div style="margin-bottom:1rem;">
-                            <input type="text" id="item-image" placeholder="Image URL (optional)" style="width:100%;padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;">
-                        </div>
-                        <button class="btn btn-success" onclick="addMenuItem()">Add Menu Item</button>
                     </div>
-
                     <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Menu Items</h3>
-                        </div>
+                        <div class="card-header"><h3 class="card-title">Menu Items</h3></div>
                         <div id="menu-items-grid" class="menu-grid"></div>
-                    </div>
-                </section>
-
-                <!-- ORDERS -->
-                <section id="orders-section" class="section">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">All Orders</h3>
-                            <p style="color:var(--gray);font-size:0.875rem;">Updates automatically in real-time</p>
-                        </div>
-                        <div id="orders-list" class="orders-list"></div>
                     </div>
                 </section>
 
                 <!-- KITCHEN -->
                 <section id="kitchen-section" class="section">
-                    <div style="margin-bottom:1.5rem;">
-                        <h3 style="font-size:1.25rem;font-weight:700;">Kitchen Display</h3>
-                        <p style="color:var(--gray);font-size:0.875rem;">Active orders update automatically. New orders play a sound.</p>
-                    </div>
+                    <div class="dept-tabs" id="dept-tabs"></div>
                     <div id="kitchen-grid" class="kitchen-grid"></div>
                 </section>
 
                 <!-- BILLS -->
                 <section id="bills-section" class="section">
                     <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Bill History</h3>
+                        <div class="card-header"><h3 class="card-title">Bill History</h3></div>
+                        <div id="bills-list"></div>
+                    </div>
+                </section>
+
+                <!-- SETTINGS -->
+                <section id="settings-section" class="section">
+                    <div class="settings-grid">
+                        <div class="card">
+                            <div class="card-header"><h3 class="card-title">Departments</h3></div>
+                            <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+                                <input type="text" id="new-dept-name" placeholder="Department name" style="flex:1;padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;">
+                                <button class="btn btn-success" onclick="addDepartment()">Add</button>
+                            </div>
+                            <div id="departments-list"></div>
                         </div>
-                        <div id="bills-list" class="orders-list"></div>
+                        <div class="card">
+                            <div class="card-header"><h3 class="card-title">Staff / Users</h3></div>
+                            <div id="staff-list" style="margin-bottom:1rem;"></div>
+                            <div style="border-top:1px solid var(--border);padding-top:1rem;">
+                                <h4 style="margin-bottom:0.75rem;font-size:1rem;">Add New Staff</h4>
+                                <div class="form-group">
+                                    <input type="text" id="staff-name" placeholder="Full name" style="width:100%;padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;margin-bottom:0.5rem;">
+                                    <input type="email" id="staff-email" placeholder="Email" style="width:100%;padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;margin-bottom:0.5rem;">
+                                    <select id="staff-role" style="width:100%;padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;margin-bottom:0.5rem;background:white;">
+                                        <option value="staff">Staff</option>
+                                        <option value="manager">Manager</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                    <select id="staff-dept" style="width:100%;padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;margin-bottom:0.5rem;background:white;"><option value="">No Department</option></select>
+                                    <div style="margin-bottom:0.5rem;"><strong>Permissions:</strong></div>
+                                    <div class="perm-grid" id="staff-perms">
+                                        <label class="perm-item"><input type="checkbox" value="dashboard" checked> Dashboard</label>
+                                        <label class="perm-item"><input type="checkbox" value="tables" checked> Tables</label>
+                                        <label class="perm-item"><input type="checkbox" value="menu" checked> Menu</label>
+                                        <label class="perm-item"><input type="checkbox" value="kitchen" checked> Kitchen</label>
+                                        <label class="perm-item"><input type="checkbox" value="bills" checked> Bills</label>
+                                        <label class="perm-item"><input type="checkbox" value="settings" checked> Settings</label>
+                                    </div>
+                                    <button class="btn btn-success" style="width:100%;margin-top:0.75rem;" onclick="addStaff()">Add Staff</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </section>
             </div>
         </div>
     </div>
 
-    <!-- QR CODE MODAL -->
+    <!-- MODALS -->
+    <div id="detail-modal" class="modal-overlay" onclick="closeModal(event, 'detail-modal')">
+        <div class="modal" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="document.getElementById('detail-modal').classList.remove('active')">&times;</button>
+            <div class="modal-title" id="detail-title">Details</div>
+            <div id="detail-content"></div>
+        </div>
+    </div>
+
     <div id="qr-modal" class="modal-overlay" onclick="closeModal(event, 'qr-modal')">
         <div class="modal" onclick="event.stopPropagation()">
             <button class="modal-close" onclick="document.getElementById('qr-modal').classList.remove('active')">&times;</button>
@@ -350,99 +358,70 @@
             <div style="text-align:center;">
                 <div id="qr-container" style="display:inline-block;padding:1rem;background:white;"></div>
                 <div id="qr-info" style="margin-top:1rem;color:var(--gray);font-size:0.875rem;"></div>
-                <p style="margin-top:1rem;font-size:0.75rem;color:var(--gray);">Scan this code to open the menu</p>
+                <button class="btn btn-primary" style="margin-top:1rem;" onclick="printQR()">🖨️ Print QR Code</button>
             </div>
         </div>
     </div>
 
     <script>
-        // ===================== CONFIGURATION =====================
+        // ===================== CONFIG =====================
         const CONFIG = {
             SUPABASE_URL: 'https://yalfwsqfnzunecnmxajq.supabase.co',
             SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhbGZ3c3Fmbnp1bmVjbm14YWpxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNjYwNjUsImV4cCI6MjA5Njg0MjA2NX0.277WcudAYbzA5sG4UpFc9ta8_IVDyn0zxnS85Q35Urc',
             MENU_URL: window.location.origin + '/menu.html'
         };
 
-        // ===================== INITIALIZATION =====================
         const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-        let currentUser = null;
-        let ordersChannel = null;
-        const sectionTitles = {
-            dashboard: 'Dashboard',
-            tables: 'Tables',
-            menu: 'Menu Manager',
-            orders: 'Orders',
-            kitchen: 'Kitchen Display',
-            bills: 'Bills'
-        };
+        let currentUser = null, userStaff = null, ordersChannel = null;
+        let currentDept = 'all', allDepartments = [];
+        const sectionTitles = { dashboard: 'Dashboard', tables: 'Tables', menu: 'Menu', kitchen: 'Kitchen', bills: 'Bills', settings: 'Settings' };
 
         document.addEventListener('DOMContentLoaded', async () => {
             const { data: { session } } = await sb.auth.getSession();
-            if (session) {
-                currentUser = session.user;
-                showApp();
-            } else {
-                showLogin();
-            }
-
-            sb.auth.onAuthStateChange((event, session) => {
-                if (event === 'SIGNED_IN' && session) {
-                    currentUser = session.user;
-                    showApp();
-                } else if (event === 'SIGNED_OUT') {
-                    currentUser = null;
-                    showLogin();
-                }
+            if (session) { currentUser = session.user; await initUser(); }
+            else showLogin();
+            sb.auth.onAuthStateChange(async (event, session) => {
+                if (event === 'SIGNED_IN' && session) { currentUser = session.user; await initUser(); }
+                else if (event === 'SIGNED_OUT') { currentUser = null; userStaff = null; showLogin(); }
             });
         });
 
-        // ===================== AUTH =====================
-        function showLogin() {
-            document.getElementById('login-section').style.display = 'flex';
-            document.getElementById('app-section').style.display = 'none';
+        async function initUser() {
+            const { data: staff } = await sb.from('staff').select('*').eq('user_id', currentUser.id).single();
+            userStaff = staff || { role: 'admin', permissions: ['dashboard','tables','menu','kitchen','bills','settings'] };
+            document.getElementById('user-email').textContent = currentUser.email;
+            applyPermissions();
+            showApp();
         }
 
-        function showApp() {
-            document.getElementById('login-section').style.display = 'none';
-            document.getElementById('app-section').style.display = 'flex';
-            document.getElementById('user-email').textContent = currentUser?.email || 'Admin';
-            showSection('dashboard');
+        function applyPermissions() {
+            const perms = userStaff?.permissions || [];
+            document.querySelectorAll('.sidebar-nav a').forEach(a => {
+                const section = a.dataset.section;
+                a.classList.toggle('hidden', !perms.includes(section) && userStaff?.role !== 'admin');
+            });
         }
+
+        function showLogin() { document.getElementById('login-section').style.display = 'flex'; document.getElementById('app-section').style.display = 'none'; }
+        function showApp() { document.getElementById('login-section').style.display = 'none'; document.getElementById('app-section').style.display = 'flex'; showSection('dashboard'); }
 
         async function handleLogin() {
             const email = document.getElementById('login-email').value.trim();
             const password = document.getElementById('login-password').value;
             const btn = document.getElementById('login-btn');
             const errorEl = document.getElementById('login-error');
-
-            if (!email || !password) {
-                errorEl.textContent = 'Please enter email and password';
-                return;
-            }
-
-            btn.disabled = true;
-            btn.textContent = 'Signing in...';
-            errorEl.textContent = '';
-
+            if (!email || !password) { errorEl.textContent = 'Please enter email and password'; return; }
+            btn.disabled = true; btn.textContent = 'Signing in...'; errorEl.textContent = '';
             const { error } = await sb.auth.signInWithPassword({ email, password });
-
-            btn.disabled = false;
-            btn.textContent = 'Sign In';
-
-            if (error) {
-                errorEl.textContent = error.message;
-            }
+            btn.disabled = false; btn.textContent = 'Sign In';
+            if (error) errorEl.textContent = error.message;
         }
 
         async function handleLogout() {
-            if (ordersChannel) {
-                sb.removeChannel(ordersChannel);
-                ordersChannel = null;
-            }
+            if (ordersChannel) { sb.removeChannel(ordersChannel); ordersChannel = null; }
             await sb.auth.signOut();
         }
 
-        // ===================== NAVIGATION =====================
         function showSection(sectionId) {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             document.getElementById(sectionId + '-section').classList.add('active');
@@ -455,166 +434,206 @@
             if (sectionId === 'dashboard') loadDashboard();
             if (sectionId === 'tables') loadTables();
             if (sectionId === 'menu') loadMenuManager();
-            if (sectionId === 'orders') { loadOrders(); subscribeToOrders(); }
             if (sectionId === 'kitchen') { loadKitchen(); subscribeToOrders(); }
             if (sectionId === 'bills') loadBills();
+            if (sectionId === 'settings') loadSettings();
         }
 
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('open');
-        }
-
-        function closeModal(event, modalId) {
-            if (event.target === document.getElementById(modalId)) {
-                document.getElementById(modalId).classList.remove('active');
-            }
-        }
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+        function closeModal(event, modalId) { if (event.target === document.getElementById(modalId)) document.getElementById(modalId).classList.remove('active'); }
 
         // ===================== DASHBOARD =====================
         async function loadDashboard() {
             try {
-                const { count: tableCount } = await sb.from('restaurant_tables').select('*', { count: 'exact', head: true }).eq('status', 'active');
-                const { count: pendingCount } = await sb.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'pending');
-                const { count: preparingCount } = await sb.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'preparing');
+                const { data: allTables } = await sb.from('restaurant_tables').select('*');
+                const totalTables = allTables?.length || 0;
+                const occupiedTables = allTables?.filter(t => t.status === 'occupied') || [];
+                const occupiedCount = occupiedTables.length;
 
-                document.getElementById('dash-tables').textContent = tableCount || 0;
-                document.getElementById('dash-pending').textContent = pendingCount || 0;
-                document.getElementById('dash-preparing').textContent = preparingCount || 0;
+                const { data: allOrders } = await sb.from('orders').select('*, order_items(*)');
+                const tableIdsWithOrders = new Set(allOrders?.map(o => o.table_id) || []);
+                const pendingTables = occupiedTables.filter(t => !tableIdsWithOrders.has(t.id));
+                const pendingCount = pendingTables.length;
 
-                const today = new Date().toISOString().split('T')[0];
-                const { data: bills } = await sb.from('bills').select('final_amount').gte('created_at', today + 'T00:00:00');
-                const revenue = bills?.reduce((sum, b) => sum + (parseFloat(b.final_amount) || 0), 0) || 0;
-                document.getElementById('dash-revenue').textContent = '$' + revenue.toFixed(2);
-            } catch (e) {
-                console.error('Dashboard error:', e);
+                const preparingOrders = allOrders?.filter(o => o.status === 'preparing' || o.status === 'pending') || [];
+                const preparingCount = new Set(preparingOrders.map(o => o.table_id)).size;
+
+                document.getElementById('dash-occupied').textContent = `${occupiedCount}/${totalTables}`;
+                document.getElementById('dash-pending').textContent = `${pendingCount}/${occupiedCount || 0}`;
+                document.getElementById('dash-preparing').textContent = preparingCount;
+
+                window._dashboardData = { occupiedTables, pendingTables, preparingOrders, allTables };
+            } catch (e) { console.error('Dashboard error:', e); }
+        }
+
+        function showDashboardDetail(type) {
+            const data = window._dashboardData; if (!data) return;
+            const modal = document.getElementById('detail-modal');
+            const title = document.getElementById('detail-title');
+            const content = document.getElementById('detail-content');
+            content.innerHTML = '';
+
+            if (type === 'occupied') {
+                title.textContent = `Occupied Tables (${data.occupiedTables.length})`;
+                if (data.occupiedTables.length === 0) { content.innerHTML = '<div class="empty-state">No occupied tables</div>'; }
+                else {
+                    data.occupiedTables.forEach(t => {
+                        const elapsed = t.occupied_at ? formatElapsed(new Date(t.occupied_at)) : 'N/A';
+                        content.innerHTML += `<div class="list-item"><div class="list-item-info"><div class="list-item-title">Table ${t.table_number}</div><div class="list-item-sub">Occupied for ${elapsed}</div></div><span class="timer">${elapsed}</span></div>`;
+                    });
+                }
+            } else if (type === 'pending') {
+                title.textContent = `Pending Orders (${data.pendingTables.length})`;
+                if (data.pendingTables.length === 0) { content.innerHTML = '<div class="empty-state">All occupied tables have ordered!</div>'; }
+                else {
+                    data.pendingTables.forEach(t => {
+                        const elapsed = t.occupied_at ? formatElapsed(new Date(t.occupied_at)) : 'N/A';
+                        content.innerHTML += `<div class="list-item"><div class="list-item-info"><div class="list-item-title">Table ${t.table_number}</div><div class="list-item-sub">No order yet — occupied for ${elapsed}</div></div><span class="timer">${elapsed}</span></div>`;
+                    });
+                }
+            } else if (type === 'preparing') {
+                title.textContent = `Preparing (${data.preparingOrders.length} orders)`;
+                if (data.preparingOrders.length === 0) { content.innerHTML = '<div class="empty-state">Nothing being prepared</div>'; }
+                else {
+                    const byTable = {};
+                    data.preparingOrders.forEach(o => {
+                        if (!byTable[o.table_number]) byTable[o.table_number] = { orders: [], oldest: o.created_at };
+                        byTable[o.table_number].orders.push(o);
+                        if (o.created_at < byTable[o.table_number].oldest) byTable[o.table_number].oldest = o.created_at;
+                    });
+                    Object.entries(byTable).forEach(([num, info]) => {
+                        const elapsed = formatElapsed(new Date(info.oldest));
+                        content.innerHTML += `<div class="list-item"><div class="list-item-info"><div class="list-item-title">Table ${num}</div><div class="list-item-sub">${info.orders.length} order(s) waiting</div></div><span class="timer">${elapsed}</span></div>`;
+                    });
+                }
             }
+            modal.classList.add('active');
+        }
+
+        function formatElapsed(date) {
+            const diff = Math.floor((Date.now() - date.getTime()) / 1000);
+            const m = Math.floor(diff / 60); const h = Math.floor(m / 60);
+            if (h > 0) return `${h}h ${m % 60}m`;
+            return `${m}m ${diff % 60}s`;
         }
 
         // ===================== TABLES =====================
         async function loadTables() {
             try {
-                const { data: tables, error } = await sb.from('restaurant_tables').select('*').order('table_number');
+                const { data: tables, error } = await sb.from('restaurant_tables').select('*, orders(*, order_items(*, menu_items(name)))').order('table_number');
                 if (error) throw error;
-
-                const grid = document.getElementById('tables-grid');
-                grid.innerHTML = '';
-
-                if (!tables || tables.length === 0) {
-                    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">🪑</div><p>No tables yet. Add your first table above.</p></div>';
-                    return;
-                }
+                const grid = document.getElementById('tables-grid'); grid.innerHTML = '';
+                if (!tables?.length) { grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">🪑</div><p>No tables yet.</p></div>'; return; }
 
                 tables.forEach(table => {
                     const card = document.createElement('div');
-                    card.className = `table-card ${table.status === 'closed' ? 'closed' : ''}`;
+                    card.className = `table-card ${table.status}`;
+                    const activeOrders = table.orders?.filter(o => !['served','cancelled'].includes(o.status)) || [];
+                    let ordersHtml = '';
+                    if (activeOrders.length > 0) {
+                        ordersHtml = '<div class="table-orders"><strong>Current Orders:</strong>';
+                        activeOrders.forEach(o => {
+                            o.order_items?.forEach(oi => {
+                                ordersHtml += `<div class="table-order-item"><span>${oi.quantity}× ${oi.item_name || oi.menu_items?.name}</span><span>$${(oi.quantity * oi.price_at_time).toFixed(2)}</span></div>`;
+                            });
+                        });
+                        ordersHtml += '</div>';
+                    }
                     card.innerHTML = `
                         <div class="table-number">Table ${table.table_number}</div>
                         <span class="table-status status-${table.status}">${table.status}</span>
+                        ${ordersHtml}
                         <div class="table-actions">
-                            <button class="btn btn-primary btn-sm" onclick="showQR('${table.id}', ${table.table_number}, '${table.qr_token}')">QR Code</button>
-                            ${table.status === 'active' 
-                                ? `<button class="btn btn-danger btn-sm" onclick="closeTable('${table.id}')">Close & Bill</button>`
-                                : `<button class="btn btn-success btn-sm" onclick="reopenTable('${table.id}')">Reopen</button>`
+                            ${table.status === 'available' 
+                                ? `<button class="btn btn-success btn-sm" onclick="occupyTable('${table.id}')">Occupy</button>`
+                                : `<button class="btn btn-primary btn-sm" onclick="showQR('${table.id}', ${table.table_number}, '${table.qr_token}')">QR Code</button>
+                                   <button class="btn btn-danger btn-sm" onclick="closeTable('${table.id}')">Close & Bill</button>`
                             }
                         </div>
                     `;
                     grid.appendChild(card);
                 });
-            } catch (e) {
-                console.error('Tables error:', e);
-                alert('Error loading tables: ' + e.message);
-            }
+            } catch (e) { console.error('Tables error:', e); alert('Error: ' + e.message); }
         }
 
         async function addTable() {
             const num = parseInt(document.getElementById('new-table-number').value);
-            if (!num || num < 1) {
-                alert('Please enter a valid table number');
-                return;
-            }
-
+            if (!num || num < 1) { alert('Enter valid table number'); return; }
             const { error } = await sb.from('restaurant_tables').insert([{ table_number: num }]);
-            if (error) {
-                alert('Error adding table: ' + error.message);
-            } else {
-                document.getElementById('new-table-number').value = '';
+            if (error) alert('Error: ' + error.message);
+            else { document.getElementById('new-table-number').value = ''; loadTables(); }
+        }
+
+        async function occupyTable(tableId) {
+            try {
+                const { data: token, error } = await sb.rpc('occupy_table', { p_table_id: tableId });
+                if (error) throw error;
                 loadTables();
-            }
+                const { data: table } = await sb.from('restaurant_tables').select('*').eq('id', tableId).single();
+                if (table) showQR(tableId, table.table_number, token);
+            } catch (e) { alert('Error: ' + e.message); }
         }
 
         async function closeTable(tableId) {
-            if (!confirm('Close this table, generate a bill, and create a new QR code for the next customers?')) return;
-
+            if (!confirm('Close table, generate bill, and mark as available?')) return;
             try {
                 const { data: billId, error } = await sb.rpc('close_table_and_bill', { p_table_id: tableId });
                 if (error) throw error;
-
                 const { data: bill } = await sb.from('bills').select('*').eq('id', billId).single();
-                if (bill) {
-                    printBillDetails(bill);
-                }
-
-                loadTables();
-                loadBills();
-                loadDashboard();
-            } catch (e) {
-                alert('Error closing table: ' + e.message);
-            }
+                if (bill) printBill(bill);
+                loadTables(); loadBills(); loadDashboard();
+            } catch (e) { alert('Error: ' + e.message); }
         }
 
-        async function reopenTable(tableId) {
-            try {
-                const { error } = await sb.rpc('reopen_table', { p_table_id: tableId });
-                if (error) throw error;
-                loadTables();
-            } catch (e) {
-                alert('Error reopening table: ' + e.message);
-            }
-        }
-
+        let currentQR = { url: '', tableNum: 0 };
         function showQR(tableId, tableNumber, token) {
             const modal = document.getElementById('qr-modal');
             const container = document.getElementById('qr-container');
             const info = document.getElementById('qr-info');
-
             container.innerHTML = '';
             const url = `${CONFIG.MENU_URL}?table=${tableId}&token=${token}`;
-
-            new QRCode(container, {
-                text: url,
-                width: 240,
-                height: 240,
-                colorDark: '#1e293b',
-                colorLight: '#ffffff',
-                correctLevel: QRCode.CorrectLevel.M
-            });
-
+            currentQR = { url, tableNum: tableNumber };
+            new QRCode(container, { text: url, width: 240, height: 240, colorDark: '#1e293b', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
             info.innerHTML = `<strong>Table ${tableNumber}</strong><br><span style="font-size:0.75rem;word-break:break-all;">${url}</span>`;
             modal.classList.add('active');
         }
 
+        function printQR() {
+            const win = window.open('', '_blank');
+            win.document.write(`<html><head><title>QR Table ${currentQR.tableNum}</title><style>body{font-family:sans-serif;text-align:center;padding:40px;}h1{margin-bottom:20px;}p{color:#666;}</style></head><body><h1>Table ${currentQR.tableNum}</h1><p>Scan to order</p><p style="font-size:12px;word-break:break-all;margin-top:20px;">${currentQR.url}</p></body></html>`);
+            win.document.close(); win.focus(); setTimeout(() => win.print(), 250);
+        }
+
         // ===================== MENU =====================
         async function loadMenuManager() {
+            await loadDepartments();
             await loadCategories();
             await loadMenuItems();
+        }
+
+        async function loadDepartments() {
+            const { data } = await sb.from('departments').select('*').order('sort_order');
+            allDepartments = data || [];
+            const select = document.getElementById('item-department');
+            const staffDept = document.getElementById('staff-dept');
+            select.innerHTML = '<option value="">Department</option>';
+            staffDept.innerHTML = '<option value="">No Department</option>';
+            allDepartments.forEach(d => {
+                select.innerHTML += `<option value="${d.id}">${d.name}</option>`;
+                staffDept.innerHTML += `<option value="${d.id}">${d.name}</option>`;
+            });
         }
 
         async function loadCategories() {
             const { data, error } = await sb.from('categories').select('*').order('sort_order');
             if (error) return;
-
             const list = document.getElementById('categories-list');
             const select = document.getElementById('item-category');
-
-            list.innerHTML = '';
-            select.innerHTML = '<option value="">Select Category (optional)</option>';
-
+            list.innerHTML = ''; select.innerHTML = '<option value="">Category</option>';
             data?.forEach(cat => {
-                const tag = document.createElement('div');
-                tag.className = 'category-tag';
-                tag.innerHTML = `${cat.name} <button onclick="deleteCategory('${cat.id}')" title="Delete">×</button>`;
+                const tag = document.createElement('div'); tag.className = 'category-tag';
+                tag.innerHTML = `${cat.name} <button onclick="deleteCategory('${cat.id}')">×</button>`;
                 list.appendChild(tag);
-
                 select.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
             });
         }
@@ -622,46 +641,30 @@
         async function addCategory() {
             const name = document.getElementById('new-category-name').value.trim();
             if (!name) return;
-
             const { error } = await sb.from('categories').insert([{ name }]);
-            if (!error) {
-                document.getElementById('new-category-name').value = '';
-                loadCategories();
-            }
+            if (!error) { document.getElementById('new-category-name').value = ''; loadCategories(); }
         }
-
-        async function deleteCategory(id) {
-            if (!confirm('Delete this category? Menu items will become uncategorized.')) return;
-            await sb.from('categories').delete().eq('id', id);
-            loadCategories();
-            loadMenuItems();
-        }
+        async function deleteCategory(id) { if (confirm('Delete?')) { await sb.from('categories').delete().eq('id', id); loadCategories(); loadMenuItems(); } }
 
         async function loadMenuItems() {
-            const { data, error } = await sb.from('menu_items').select('*, categories(name)').order('name');
+            const { data, error } = await sb.from('menu_items').select('*, categories(name), departments(name)').order('name');
             if (error) return;
-
-            const grid = document.getElementById('menu-items-grid');
-            grid.innerHTML = '';
-
-            if (!data || data.length === 0) {
-                grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">🍽️</div><p>No menu items yet.</p></div>';
-                return;
-            }
-
+            const grid = document.getElementById('menu-items-grid'); grid.innerHTML = '';
+            if (!data?.length) { grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">🍽️</div><p>No items.</p></div>'; return; }
             data.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'menu-item-card';
+                const div = document.createElement('div'); div.className = 'menu-item-card';
                 div.innerHTML = `
-                    <div class="menu-item-image">
-                        ${item.image_url ? `<img src="${item.image_url}" alt="${item.name}" onerror="this.parentElement.innerHTML='🍽️'">` : '🍽️'}
-                    </div>
+                    <div class="menu-item-image">${item.image_url ? `<img src="${item.image_url}" alt="${item.name}" onerror="this.parentElement.innerHTML='🍽️'">` : '🍽️'}</div>
                     <div class="menu-item-info">
                         <div class="menu-item-name">${item.name}</div>
-                        <div class="menu-item-meta">${item.categories?.name || 'Uncategorized'} • ${item.available ? 'Available' : 'Unavailable'}</div>
+                        <div class="menu-item-meta">${item.categories?.name || 'Uncategorized'} • ${item.departments?.name || 'No Dept'} • ${item.available ? 'Available' : 'Unavailable'}</div>
                         <div class="menu-item-footer">
                             <span class="menu-item-price">$${parseFloat(item.price).toFixed(2)}</span>
-                            <button class="btn btn-danger btn-sm" onclick="deleteMenuItem('${item.id}')">Delete</button>
+                            <div class="menu-item-actions">
+                                <button class="btn btn-secondary btn-sm" onclick="editMenuItem('${item.id}')">Edit</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteMenuItem('${item.id}')">Delete</button>
+                                <label class="toggle-switch"><input type="checkbox" ${item.available ? 'checked' : ''} onchange="toggleAvailable('${item.id}', this.checked)"><span class="toggle-slider"></span></label>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -673,219 +676,125 @@
             const name = document.getElementById('item-name').value.trim();
             const price = parseFloat(document.getElementById('item-price').value);
             const categoryId = document.getElementById('item-category').value;
-            const description = document.getElementById('item-desc').value.trim();
-            const imageUrl = document.getElementById('item-image').value.trim();
-
-            if (!name || isNaN(price) || price < 0) {
-                alert('Please enter a name and valid price');
-                return;
+            const deptId = document.getElementById('item-department').value;
+            const desc = document.getElementById('item-desc').value.trim();
+            const url = document.getElementById('item-image-url').value.trim();
+            if (!name || isNaN(price) || price < 0) { alert('Enter name and valid price'); return; }
+            let imageUrl = url;
+            const file = document.getElementById('item-image-file').files[0];
+            if (file && !url) {
+                const { data, error } = await sb.storage.from('menu-images').upload(`${Date.now()}_${file.name}`, file);
+                if (!error) imageUrl = sb.storage.from('menu-images').getPublicUrl(data.path).data.publicUrl;
             }
-
-            const { error } = await sb.from('menu_items').insert([{
-                name, price, category_id: categoryId || null, description: description || null, image_url: imageUrl || null
-            }]);
-
+            const { error } = await sb.from('menu_items').insert([{ name, price, category_id: categoryId || null, department_id: deptId || null, description: desc || null, image_url: imageUrl || null }]);
             if (!error) {
-                document.getElementById('item-name').value = '';
-                document.getElementById('item-price').value = '';
-                document.getElementById('item-desc').value = '';
-                document.getElementById('item-image').value = '';
-                loadMenuItems();
-            } else {
-                alert('Error: ' + error.message);
-            }
+                document.getElementById('item-name').value = ''; document.getElementById('item-price').value = '';
+                document.getElementById('item-desc').value = ''; document.getElementById('item-image-url').value = '';
+                document.getElementById('item-image-file').value = ''; loadMenuItems();
+            } else alert('Error: ' + error.message);
         }
 
-        async function deleteMenuItem(id) {
-            if (!confirm('Delete this menu item?')) return;
-            await sb.from('menu_items').delete().eq('id', id);
+        async function editMenuItem(id) {
+            const { data: item } = await sb.from('menu_items').select('*').eq('id', id).single();
+            if (!item) return;
+            const name = prompt('Item name:', item.name); if (!name) return;
+            const price = parseFloat(prompt('Price:', item.price)); if (isNaN(price)) return;
+            await sb.from('menu_items').update({ name, price }).eq('id', id);
             loadMenuItems();
         }
+        async function deleteMenuItem(id) { if (confirm('Delete this item?')) { await sb.from('menu_items').delete().eq('id', id); loadMenuItems(); } }
+        async function toggleAvailable(id, available) { await sb.from('menu_items').update({ available }).eq('id', id); loadMenuItems(); }
 
-        // ===================== ORDERS =====================
-        async function loadOrders() {
-            try {
-                const { data: orders, error } = await sb
-                    .from('orders')
-                    .select('*, order_items(*, menu_items(name))')
-                    .order('created_at', { ascending: false })
-                    .limit(50);
-
-                if (error) throw error;
-                renderOrders(orders, 'orders-list');
-            } catch (e) {
-                console.error('Orders error:', e);
-            }
-        }
-
-        function renderOrders(orders, containerId) {
-            const container = document.getElementById(containerId);
-            if (!container) return;
-
-            container.innerHTML = '';
-
-            if (!orders || orders.length === 0) {
-                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><p>No orders found.</p></div>';
-                return;
-            }
-
-            orders.forEach(order => {
-                const card = document.createElement('div');
-                card.className = 'order-card';
-                card.id = `order-${order.id}`;
-
-                const time = new Date(order.created_at).toLocaleTimeString();
-                const items = order.order_items?.map(oi => {
-                    const note = oi.notes ? `<span class="order-item-note">(${oi.notes})</span>` : '';
-                    return `<div class="order-item-row"><span>${oi.quantity}× ${oi.item_name || oi.menu_items?.name || 'Item'} ${note}</span><span>$${(oi.quantity * oi.price_at_time).toFixed(2)}</span></div>`;
-                }).join('') || '';
-
-                let actions = '';
-                if (order.status === 'pending') {
-                    actions = `<button class="btn btn-warning btn-sm" onclick="updateOrderStatus('${order.id}', 'preparing')">Start Preparing</button>`;
-                } else if (order.status === 'preparing') {
-                    actions = `<button class="btn btn-success btn-sm" onclick="updateOrderStatus('${order.id}', 'ready')">Mark Ready</button>`;
-                } else if (order.status === 'ready') {
-                    actions = `<button class="btn btn-primary btn-sm" onclick="updateOrderStatus('${order.id}', 'served')">Mark Served</button>`;
-                }
-                if (order.status !== 'cancelled' && order.status !== 'served') {
-                    actions += ` <button class="btn btn-danger btn-sm" onclick="updateOrderStatus('${order.id}', 'cancelled')">Cancel</button>`;
-                }
-
-                card.innerHTML = `
-                    <div class="order-header">
-                        <div>
-                            <span class="order-table">Table ${order.table_number || '?'}</span>
-                            <span class="order-time"> • ${time}</span>
-                        </div>
-                        <span class="order-status status-${order.status}">${order.status}</span>
-                    </div>
-                    <div class="order-items">${items}</div>
-                    <div class="order-total">Total: $${parseFloat(order.total_amount || 0).toFixed(2)}</div>
-                    ${actions ? `<div class="order-actions">${actions}</div>` : ''}
-                `;
-                container.appendChild(card);
+        // ===================== KITCHEN =====================
+        async function loadKitchen() {
+            const { data: depts } = await sb.from('departments').select('*').order('sort_order');
+            allDepartments = depts || [];
+            const tabs = document.getElementById('dept-tabs');
+            tabs.innerHTML = '<button class="dept-tab active" data-dept="all" onclick="filterDept('all')">All</button>';
+            allDepartments.forEach(d => {
+                tabs.innerHTML += `<button class="dept-tab" data-dept="${d.id}" onclick="filterDept('${d.id}')">${d.name}</button>`;
             });
+            await renderKitchen();
         }
 
-        async function updateOrderStatus(orderId, status) {
-            const { error } = await sb.from('orders').update({ status }).eq('id', orderId);
-            if (!error) {
-                loadOrders();
-                loadKitchen();
-                loadDashboard();
-            }
+        function filterDept(deptId) {
+            currentDept = deptId;
+            document.querySelectorAll('.dept-tab').forEach(t => t.classList.toggle('active', t.dataset.dept === deptId));
+            renderKitchen();
+        }
+
+        async function renderKitchen() {
+            try {
+                const { data: items, error } = await sb
+                    .from('order_items')
+                    .select('*, orders(table_id, table_number, created_at), menu_items(name)')
+                    .in('status', ['pending', 'preparing'])
+                    .order('created_at', { ascending: true });
+                if (error) throw error;
+
+                const grid = document.getElementById('kitchen-grid'); grid.innerHTML = '';
+                let filtered = items || [];
+                if (currentDept !== 'all') filtered = filtered.filter(i => i.department_id === currentDept);
+
+                if (!filtered.length) { grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">👨‍🍳</div><p>No active items.</p></div>'; return; }
+
+                const grouped = {};
+                filtered.forEach(item => {
+                    const key = `${item.order_id}-${item.orders?.table_number}`;
+                    if (!grouped[key]) grouped[key] = { tableNumber: item.orders?.table_number, orderId: item.order_id, items: [], oldest: item.created_at };
+                    grouped[key].items.push(item);
+                    if (item.created_at < grouped[key].oldest) grouped[key].oldest = item.created_at;
+                });
+
+                Object.values(grouped).forEach(group => {
+                    const allPending = group.items.every(i => i.status === 'pending');
+                    const allPreparing = group.items.every(i => i.status === 'preparing');
+                    const status = allPending ? 'pending' : (allPreparing ? 'preparing' : 'mixed');
+                    const card = document.createElement('div');
+                    card.className = `kitchen-card ${status}`;
+                    const elapsed = formatElapsed(new Date(group.oldest));
+                    let itemsHtml = group.items.map(i => `<div class="kitchen-item"><strong>${i.quantity}×</strong> ${i.item_name || i.menu_items?.name || 'Item'} ${i.notes ? `<em style="color:var(--gray);font-size:0.875rem;">(${i.notes})</em>` : ''}</div>`).join('');
+                    let actionText = status === 'pending' ? 'START PREPARING' : 'MARK READY';
+                    let nextStatus = status === 'pending' ? 'preparing' : 'ready';
+                    card.innerHTML = `
+                        <div class="kitchen-table">Table ${group.tableNumber || '?'}</div>
+                        <div class="kitchen-time">${elapsed} • ${group.items.length} item(s)</div>
+                        <div class="kitchen-items">${itemsHtml}</div>
+                        <div class="kitchen-status ${status}" onclick="updateKitchenItems('${group.orderId}', '${nextStatus}')" style="cursor:pointer;">${actionText}</div>
+                    `;
+                    grid.appendChild(card);
+                });
+            } catch (e) { console.error('Kitchen error:', e); }
+        }
+
+        async function updateKitchenItems(orderId, status) {
+            await sb.from('order_items').update({ status }).eq('order_id', orderId).in('status', ['pending', 'preparing']);
+            renderKitchen();
+            playSound();
+        }
+
+        function playSound() {
+            try { const a = new (window.AudioContext||window.webkitAudioContext)(); const o = a.createOscillator(); const g = a.createGain(); o.connect(g); g.connect(a.destination); o.frequency.value=880; g.gain.value=0.1; o.start(); o.stop(a.currentTime+0.15); } catch(e){}
         }
 
         function subscribeToOrders() {
             if (ordersChannel) return;
-
-            ordersChannel = sb
-                .channel('orders-channel')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
-                    if (payload.eventType === 'INSERT') {
-                        playNotificationSound();
-                    }
-                    loadOrders();
-                    loadKitchen();
-                    loadDashboard();
-                })
-                .subscribe();
-        }
-
-        function playNotificationSound() {
-            try {
-                const audio = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = audio.createOscillator();
-                const gain = audio.createGain();
-                oscillator.connect(gain);
-                gain.connect(audio.destination);
-                oscillator.frequency.value = 880;
-                gain.gain.value = 0.1;
-                oscillator.start();
-                oscillator.stop(audio.currentTime + 0.15);
-            } catch (e) {}
-        }
-
-        // ===================== KITCHEN =====================
-        async function loadKitchen() {
-            try {
-                const { data: orders, error } = await sb
-                    .from('orders')
-                    .select('*, order_items(*, menu_items(name))')
-                    .in('status', ['pending', 'preparing', 'ready'])
-                    .order('created_at', { ascending: true });
-
-                if (error) throw error;
-
-                const grid = document.getElementById('kitchen-grid');
-                grid.innerHTML = '';
-
-                if (!orders || orders.length === 0) {
-                    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">👨‍🍳</div><p>No active orders in kitchen.</p></div>';
-                    return;
-                }
-
-                orders.forEach(order => {
-                    const card = document.createElement('div');
-                    card.className = `kitchen-card ${order.status}`;
-
-                    const time = new Date(order.created_at).toLocaleTimeString();
-                    const items = order.order_items?.map(oi => 
-                        `<div class="kitchen-item"><strong>${oi.quantity}×</strong> ${oi.item_name || oi.menu_items?.name || 'Item'} ${oi.notes ? `<em style="color:var(--gray);font-size:0.875rem;">(${oi.notes})</em>` : ''}</div>`
-                    ).join('') || '';
-
-                    let actionBtn = '';
-                    if (order.status === 'pending') {
-                        actionBtn = `<button class="btn btn-primary" onclick="updateOrderStatus('${order.id}', 'preparing')">START PREPARING</button>`;
-                    } else if (order.status === 'preparing') {
-                        actionBtn = `<button class="btn btn-success" onclick="updateOrderStatus('${order.id}', 'ready')">MARK READY</button>`;
-                    } else if (order.status === 'ready') {
-                        actionBtn = `<button class="btn btn-primary" onclick="updateOrderStatus('${order.id}', 'served')">MARK SERVED</button>`;
-                    }
-
-                    card.innerHTML = `
-                        <div class="kitchen-table">Table ${order.table_number || '?'}</div>
-                        <div class="kitchen-time">${time} • ${order.order_items?.length || 0} items</div>
-                        <div class="kitchen-items">${items}</div>
-                        <div class="kitchen-actions">${actionBtn}</div>
-                    `;
-                    grid.appendChild(card);
-                });
-            } catch (e) {
-                console.error('Kitchen error:', e);
-            }
+            ordersChannel = sb.channel('orders-channel').on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, () => { renderKitchen(); playSound(); }).subscribe();
         }
 
         // ===================== BILLS =====================
         async function loadBills() {
             try {
-                const { data: bills, error } = await sb
-                    .from('bills')
-                    .select('*')
-                    .order('created_at', { ascending: false })
-                    .limit(50);
-
+                const { data: bills, error } = await sb.from('bills').select('*').order('created_at', { ascending: false }).limit(50);
                 if (error) throw error;
-
-                const list = document.getElementById('bills-list');
-                list.innerHTML = '';
-
-                if (!bills || bills.length === 0) {
-                    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🧾</div><p>No bills yet.</p></div>';
-                    return;
-                }
-
+                const list = document.getElementById('bills-list'); list.innerHTML = '';
+                if (!bills?.length) { list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🧾</div><p>No bills.</p></div>'; return; }
                 bills.forEach(bill => {
                     const time = new Date(bill.created_at).toLocaleString();
-                    const div = document.createElement('div');
-                    div.className = 'bill-card';
+                    const div = document.createElement('div'); div.className = 'bill-card';
                     div.innerHTML = `
                         <div class="bill-header">
-                            <div>
-                                <span class="bill-table">Table ${bill.table_number || '?'}</span>
-                                <span style="color:var(--gray);font-size:0.875rem;margin-left:0.5rem;">• ${time}</span>
-                            </div>
+                            <div><span class="bill-table">Table ${bill.table_number || '?'}</span><span style="color:var(--gray);font-size:0.875rem;margin-left:0.5rem;">• ${time}</span></div>
                             <span class="bill-status status-${bill.status}">${bill.status}</span>
                         </div>
                         <div class="bill-amounts">
@@ -895,72 +804,84 @@
                         </div>
                         <div class="bill-actions">
                             <button class="btn btn-primary btn-sm" onclick="printBillById('${bill.id}')">🖨️ Print</button>
-                            ${bill.status === 'unpaid' ? `<button class="btn btn-success btn-sm" onclick="markBillPaid('${bill.id}')">Mark Paid</button>` : ''}
+                            ${bill.status === 'unpaid' ? `<button class="btn btn-success btn-sm" onclick="markPaid('${bill.id}')">Mark Paid</button>` : ''}
                         </div>
                     `;
                     list.appendChild(div);
                 });
-            } catch (e) {
-                console.error('Bills error:', e);
-            }
+            } catch (e) { console.error('Bills error:', e); }
         }
 
-        async function markBillPaid(billId) {
-            await sb.from('bills').update({ status: 'paid' }).eq('id', billId);
-            loadBills();
-        }
+        async function markPaid(billId) { await sb.from('bills').update({ status: 'paid' }).eq('id', billId); loadBills(); }
+        async function printBillById(billId) { const { data: bill } = await sb.from('bills').select('*').eq('id', billId).single(); if (bill) printBill(bill); }
 
-        async function printBillById(billId) {
-            const { data: bill } = await sb.from('bills').select('*').eq('id', billId).single();
-            if (bill) printBillDetails(bill);
-        }
-
-        async function printBillDetails(bill) {
-            const { data: orders } = await sb
-                .from('orders')
-                .select('*, order_items(*)')
-                .eq('bill_id', bill.id)
-                .order('created_at');
-
+        async function printBill(bill) {
+            const { data: orders } = await sb.from('orders').select('*, order_items(*)').eq('bill_id', bill.id).order('created_at');
             let itemsHtml = '';
-            orders?.forEach(order => {
-                order.order_items?.forEach(oi => {
-                    itemsHtml += `<tr><td>${oi.quantity}×</td><td>${oi.item_name}</td><td style="text-align:right;">$${(oi.quantity * oi.price_at_time).toFixed(2)}</td></tr>`;
-                });
-            });
-
-            const html = `
-                <div style="text-align:center;margin-bottom:20px;">
-                    <div style="font-size:24px;font-weight:bold;">DINEQR RESTAURANT</div>
-                    <div style="color:#666;font-size:14px;">${new Date(bill.created_at).toLocaleString()}</div>
-                </div>
-                <div style="font-size:18px;margin:15px 0;font-weight:600;">Table ${bill.table_number}</div>
-                <table style="width:100%;border-collapse:collapse;margin:15px 0;">
-                    <thead><tr><th style="text-align:left;padding:5px;border-bottom:2px solid #000;">Qty</th><th style="text-align:left;padding:5px;border-bottom:2px solid #000;">Item</th><th style="text-align:right;padding:5px;border-bottom:2px solid #000;">Price</th></tr></thead>
-                    <tbody>${itemsHtml}</tbody>
-                </table>
-                <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:14px;"><span>Subtotal:</span><span>$${parseFloat(bill.total_amount).toFixed(2)}</span></div>
-                <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:14px;"><span>Tax:</span><span>$${parseFloat(bill.tax_amount).toFixed(2)}</span></div>
-                <div style="text-align:right;font-size:18px;font-weight:bold;margin-top:15px;border-top:2px solid #000;padding-top:10px;">TOTAL: $${parseFloat(bill.final_amount).toFixed(2)}</div>
-                <div style="text-align:center;margin-top:30px;color:#666;font-size:14px;">Thank you for dining with us!</div>
-            `;
-
+            orders?.forEach(o => { o.order_items?.forEach(oi => { itemsHtml += `<tr><td>${oi.quantity}×</td><td>${oi.item_name}</td><td style="text-align:right;">$${(oi.quantity*oi.price_at_time).toFixed(2)}</td></tr>`; }); });
+            const html = `<div style="text-align:center;margin-bottom:20px;"><div style="font-size:24px;font-weight:bold;">DINEQR</div><div style="color:#666;font-size:14px;">${new Date(bill.created_at).toLocaleString()}</div></div><div style="font-size:18px;margin:15px 0;font-weight:600;">Table ${bill.table_number}</div><table style="width:100%;border-collapse:collapse;margin:15px 0;"><thead><tr><th style="text-align:left;padding:5px;border-bottom:2px solid #000;">Qty</th><th style="text-align:left;padding:5px;border-bottom:2px solid #000;">Item</th><th style="text-align:right;padding:5px;border-bottom:2px solid #000;">Price</th></tr></thead><tbody>${itemsHtml}</tbody></table><div style="display:flex;justify-content:space-between;padding:5px 0;font-size:14px;"><span>Subtotal:</span><span>$${parseFloat(bill.total_amount).toFixed(2)}</span></div><div style="display:flex;justify-content:space-between;padding:5px 0;font-size:14px;"><span>Tax:</span><span>$${parseFloat(bill.tax_amount).toFixed(2)}</span></div><div style="text-align:right;font-size:18px;font-weight:bold;margin-top:15px;border-top:2px solid #000;padding-top:10px;">TOTAL: $${parseFloat(bill.final_amount).toFixed(2)}</div><div style="text-align:center;margin-top:30px;color:#666;font-size:14px;">Thank you!</div>`;
             const win = window.open('', '_blank');
-            win.document.write(`
-                <html>
-                <head>
-                    <title>Bill - Table ${bill.table_number}</title>
-                    <style>
-                        body { font-family: 'Courier New', monospace; padding: 20px; max-width: 400px; margin: 0 auto; }
-                    </style>
-                </head>
-                <body>${html}</body>
-                </html>
-            `);
-            win.document.close();
-            win.focus();
-            setTimeout(() => { win.print(); }, 250);
+            win.document.write(`<html><head><title>Bill - Table ${bill.table_number}</title><style>body{font-family:'Courier New',monospace;padding:20px;max-width:400px;margin:0 auto;}</style></head><body>${html}</body></html>`);
+            win.document.close(); win.focus(); setTimeout(() => win.print(), 250);
         }
+
+        // ===================== SETTINGS =====================
+        async function loadSettings() {
+            await loadDepartments();
+            const { data: depts } = await sb.from('departments').select('*').order('sort_order');
+            const list = document.getElementById('departments-list'); list.innerHTML = '';
+            if (!depts?.length) { list.innerHTML = '<div class="empty-state">No departments</div>'; }
+            else {
+                depts.forEach(d => {
+                    list.innerHTML += `<div class="list-item"><div class="list-item-info"><div class="list-item-title">${d.name}</div></div><button class="btn btn-danger btn-sm" onclick="deleteDepartment('${d.id}')">Delete</button></div>`;
+                });
+            }
+            await loadStaff();
+        }
+
+        async function addDepartment() {
+            const name = document.getElementById('new-dept-name').value.trim();
+            if (!name) return;
+            const { error } = await sb.from('departments').insert([{ name }]);
+            if (!error) { document.getElementById('new-dept-name').value = ''; loadSettings(); }
+        }
+        async function deleteDepartment(id) { if (confirm('Delete department?')) { await sb.from('departments').delete().eq('id', id); loadSettings(); } }
+
+        async function loadStaff() {
+            const { data: staff } = await sb.from('staff').select('*, departments(name)').order('created_at');
+            const list = document.getElementById('staff-list'); list.innerHTML = '';
+            if (!staff?.length) { list.innerHTML = '<div class="empty-state">No staff added yet</div>'; return; }
+            staff.forEach(s => {
+                const perms = s.permissions?.join(', ') || 'None';
+                list.innerHTML += `<div class="list-item"><div class="list-item-info"><div class="list-item-title">${s.name} (${s.role})</div><div class="list-item-sub">${s.email} • ${s.departments?.name || 'No Dept'} • ${perms}</div></div><button class="btn btn-danger btn-sm" onclick="deleteStaff('${s.id}')">Remove</button></div>`;
+            });
+        }
+
+        async function addStaff() {
+            const name = document.getElementById('staff-name').value.trim();
+            const email = document.getElementById('staff-email').value.trim();
+            const role = document.getElementById('staff-role').value;
+            const deptId = document.getElementById('staff-dept').value;
+            const perms = Array.from(document.querySelectorAll('#staff-perms input:checked')).map(cb => cb.value);
+            if (!name || !email) { alert('Enter name and email'); return; }
+
+            // Create auth user first
+            const password = Math.random().toString(36).slice(-8) + 'A1!';
+            const { data: authUser, error: authError } = await sb.auth.signUp({ email, password });
+            if (authError && !authError.message.includes('already registered')) { alert('Auth error: ' + authError.message); return; }
+
+            const userId = authUser?.user?.id;
+            if (!userId) { alert('Could not create user'); return; }
+
+            const { error } = await sb.from('staff').insert([{ user_id: userId, name, email, role, permissions: perms, department_id: deptId || null }]);
+            if (!error) {
+                document.getElementById('staff-name').value = ''; document.getElementById('staff-email').value = '';
+                alert(`Staff created! Temporary password: ${password} (they should change it)`);
+                loadStaff();
+            } else alert('Error: ' + error.message);
+        }
+
+        async function deleteStaff(id) { if (confirm('Remove this staff member?')) { await sb.from('staff').delete().eq('id', id); loadStaff(); } }
     </script>
 </body>
 </html>
