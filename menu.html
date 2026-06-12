@@ -6,35 +6,19 @@
     <title>DineQR Menu</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root {
-            --primary: #2563eb;
-            --primary-dark: #1d4ed8;
-            --success: #16a34a;
-            --danger: #dc2626;
-            --dark: #1e293b;
-            --gray: #64748b;
-            --light: #f8fafc;
-            --border: #e2e8f0;
-            --radius: 0.75rem;
-        }
+        :root { --primary: #2563eb; --primary-dark: #1d4ed8; --success: #16a34a; --danger: #dc2626; --dark: #1e293b; --gray: #64748b; --light: #f8fafc; --border: #e2e8f0; --radius: 0.75rem; }
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--light); color: var(--dark); min-height: 100vh; padding-bottom: 80px; }
-
-        /* Header */
         .header { background: var(--dark); color: white; padding: 1.25rem; position: sticky; top: 0; z-index: 10; }
         .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
         .restaurant-name { font-size: 1.25rem; font-weight: 700; }
         .table-badge { background: rgba(255,255,255,0.2); padding: 0.375rem 1rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 600; }
-
-        /* Categories */
         .categories-scroll { display: flex; gap: 0.5rem; overflow-x: auto; padding: 0.75rem 1rem; background: white; border-bottom: 1px solid var(--border); scrollbar-width: none; position: sticky; top: 0; z-index: 5; }
         .categories-scroll::-webkit-scrollbar { display: none; }
-        .cat-btn { padding: 0.5rem 1rem; border-radius: 9999px; border: 1px solid var(--border); background: white; font-size: 0.875rem; font-weight: 500; white-space: nowrap; cursor: pointer; transition: all 0.2s; }
+        .cat-btn { padding: 0.5rem 1rem; border-radius: 9999px; border: 1px solid var(--border); background: white; font-size: 0.875rem; font-weight: 500; white-space: nowrap; cursor: pointer; }
         .cat-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
-
-        /* Menu */
         .menu-section { padding: 1rem; }
-        .section-title { font-size: 1.125rem; font-weight: 700; margin-bottom: 1rem; color: var(--dark); }
+        .section-title { font-size: 1.125rem; font-weight: 700; margin-bottom: 1rem; }
         .menu-item { display: flex; gap: 1rem; background: white; border-radius: var(--radius); padding: 1rem; margin-bottom: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .item-image { width: 80px; height: 80px; border-radius: 0.5rem; background: #f1f5f9; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; overflow: hidden; }
         .item-image img { width: 100%; height: 100%; object-fit: cover; }
@@ -45,17 +29,14 @@
         .item-price { font-weight: 700; color: var(--primary); font-size: 1.125rem; }
         .add-btn { width: 36px; height: 36px; border-radius: 50%; background: var(--primary); color: white; border: none; font-size: 1.25rem; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .add-btn:active { transform: scale(0.95); }
-        .add-btn:disabled { background: var(--gray); cursor: not-allowed; }
-
-        /* Cart Bar */
+        .qty-controls { display: flex; align-items: center; gap: 0.5rem; }
+        .qty-btn { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border); background: white; font-size: 1rem; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .qty-value { min-width: 24px; text-align: center; font-weight: 600; }
         .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid var(--border); padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; z-index: 20; box-shadow: 0 -4px 6px rgba(0,0,0,0.05); }
         .cart-info { display: flex; flex-direction: column; }
         .cart-count { font-size: 0.75rem; color: var(--gray); }
         .cart-total { font-size: 1.125rem; font-weight: 700; color: var(--primary); }
         .cart-btn { background: var(--success); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: var(--radius); font-weight: 600; font-size: 0.9375rem; cursor: pointer; }
-        .cart-btn:disabled { background: var(--gray); }
-
-        /* Cart Modal */
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; display: none; align-items: flex-end; }
         .modal-overlay.active { display: flex; }
         .cart-modal { background: white; width: 100%; max-height: 80vh; border-radius: var(--radius) var(--radius) 0 0; padding: 1.25rem; overflow-y: auto; animation: slideUp 0.3s ease; }
@@ -66,53 +47,38 @@
         .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--border); }
         .cart-item-name { font-weight: 500; flex: 1; min-width: 0; padding-right: 0.5rem; }
         .cart-item-price { color: var(--gray); font-size: 0.875rem; margin-right: 0.75rem; }
-        .qty-controls { display: flex; align-items: center; gap: 0.5rem; }
-        .qty-btn { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border); background: white; font-size: 1rem; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .qty-btn:active { background: var(--light); }
-        .qty-value { min-width: 24px; text-align: center; font-weight: 600; }
         .cart-item-note { width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 0.5rem; margin-top: 0.5rem; font-size: 0.875rem; font-family: inherit; }
         .cart-footer { margin-top: 1.5rem; padding-top: 1rem; border-top: 2px solid var(--border); }
         .cart-row { display: flex; justify-content: space-between; padding: 0.375rem 0; }
         .cart-grand-total { font-size: 1.25rem; font-weight: 700; color: var(--primary); margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; }
         .place-order-btn { width: 100%; margin-top: 1rem; padding: 1rem; background: var(--success); color: white; border: none; border-radius: var(--radius); font-size: 1rem; font-weight: 600; cursor: pointer; }
         .place-order-btn:disabled { background: var(--gray); }
-
-        /* Success */
         .success-screen { display: none; position: fixed; inset: 0; background: white; z-index: 100; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; }
         .success-screen.active { display: flex; }
         .success-icon { font-size: 4rem; margin-bottom: 1rem; }
         .success-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
         .success-text { color: var(--gray); margin-bottom: 2rem; }
         .success-btn { padding: 1rem 2rem; background: var(--primary); color: white; border: none; border-radius: var(--radius); font-size: 1rem; font-weight: 600; cursor: pointer; }
-
-        /* Loading */
         .loading { text-align: center; padding: 3rem; color: var(--gray); }
         .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* Error */
         .error-screen { display: none; position: fixed; inset: 0; background: white; z-index: 100; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; }
         .error-screen.active { display: flex; }
         .error-icon { font-size: 4rem; margin-bottom: 1rem; }
         .error-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
         .error-text { color: var(--gray); }
     </style>
+<base target="_blank">
 </head>
 <body>
-    <!-- Loading State -->
     <div id="loading-screen" class="loading" style="position:fixed;inset:0;background:white;z-index:100;">
-        <div class="spinner"></div>
-        <p>Loading menu...</p>
+        <div class="spinner"></div><p>Loading menu...</p>
     </div>
-
-    <!-- Error State -->
     <div id="error-screen" class="error-screen">
         <div class="error-icon">⚠️</div>
         <div class="error-title" id="error-title">Invalid QR Code</div>
-        <div class="error-text" id="error-text">This table link is not valid. Please scan a new QR code.</div>
+        <div class="error-text" id="error-text">This table link is not valid.</div>
     </div>
-
-    <!-- Main App -->
     <div id="app" style="display:none;">
         <div class="header">
             <div class="header-top">
@@ -121,15 +87,10 @@
             </div>
             <div style="font-size:0.8125rem;opacity:0.8;">Scan, order & enjoy!</div>
         </div>
-
         <div class="categories-scroll" id="categories-scroll">
             <button class="cat-btn active" data-cat="all" onclick="filterCategory('all')">All</button>
         </div>
-
-        <div id="menu-container">
-            <!-- Sections injected here -->
-        </div>
-
+        <div id="menu-container"></div>
         <div class="cart-bar" id="cart-bar" style="display:none;">
             <div class="cart-info">
                 <span class="cart-count" id="cart-count">0 items</span>
@@ -138,8 +99,6 @@
             <button class="cart-btn" onclick="openCart()">View Cart</button>
         </div>
     </div>
-
-    <!-- Cart Modal -->
     <div class="modal-overlay" id="cart-modal-overlay" onclick="closeCart(event)">
         <div class="cart-modal" onclick="event.stopPropagation()">
             <div class="cart-header">
@@ -154,154 +113,82 @@
             </div>
         </div>
     </div>
-
-    <!-- Success Screen -->
     <div class="success-screen" id="success-screen">
         <div class="success-icon">✅</div>
         <div class="success-title">Order Placed!</div>
         <div class="success-text">Your order has been sent to the kitchen. We'll bring it to Table <span id="success-table"></span> shortly.</div>
         <button class="success-btn" onclick="resetOrder()">Order More</button>
     </div>
-
     <script>
-        // ===================== CONFIGURATION =====================
         const CONFIG = {
             SUPABASE_URL: 'https://yalfwsqfnzunecnmxajq.supabase.co',
             SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhbGZ3c3Fmbnp1bmVjbm14YWpxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNjYwNjUsImV4cCI6MjA5Njg0MjA2NX0.277WcudAYbzA5sG4UpFc9ta8_IVDyn0zxnS85Q35Urc'
         };
-
-        // ===================== STATE =====================
         const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-        let tableId = null;
-        let tableNumber = null;
-        let menuData = { categories: [], items: [] };
-        let cart = {}; // { itemId: { item, quantity, note } }
-        let currentCategory = 'all';
+        let tableId = null, tableNumber = null, menuData = { categories: [], items: [] }, cart = {}, currentCategory = 'all';
 
-        // ===================== INITIALIZATION =====================
         document.addEventListener('DOMContentLoaded', async () => {
             const params = new URLSearchParams(window.location.search);
-            tableId = params.get('table');
-            const token = params.get('token');
-
-            if (!tableId || !token) {
-                showError('Missing Parameters', 'This QR code is missing table information. Please scan a valid code.');
-                return;
-            }
-
+            tableId = params.get('table'); const token = params.get('token');
+            if (!tableId || !token) { showError('Missing Parameters', 'This QR code is missing table information.'); return; }
             try {
-                // Validate table and token
-                const { data: table, error } = await sb
-                    .from('restaurant_tables')
-                    .select('*')
-                    .eq('id', tableId)
-                    .eq('qr_token', token)
-                    .eq('status', 'active')
-                    .single();
-
-                if (error || !table) {
-                    showError('Invalid or Expired QR Code', 'This table has been closed. Please ask staff for a new QR code.');
-                    return;
-                }
-
+                const { data: table, error } = await sb.from('restaurant_tables').select('*').eq('id', tableId).eq('qr_token', token).eq('status', 'occupied').single();
+                if (error || !table) { showError('Invalid QR Code', 'This table has been closed. Ask staff for a new QR code.'); return; }
                 tableNumber = table.table_number;
                 document.getElementById('table-badge').textContent = `Table ${tableNumber}`;
                 document.getElementById('success-table').textContent = tableNumber;
-
-                // Load menu
                 await loadMenu();
-
                 document.getElementById('loading-screen').style.display = 'none';
                 document.getElementById('app').style.display = 'block';
                 renderMenu();
-
-            } catch (e) {
-                console.error(e);
-                showError('Error', 'Could not load the menu. Please try again.');
-            }
+            } catch (e) { console.error(e); showError('Error', 'Could not load menu.'); }
         });
 
-        // ===================== DATA LOADING =====================
         async function loadMenu() {
             const [{ data: categories }, { data: items }] = await Promise.all([
                 sb.from('categories').select('*').order('sort_order'),
                 sb.from('menu_items').select('*, categories(name)').eq('available', true).order('name')
             ]);
-
             menuData.categories = categories || [];
             menuData.items = items || [];
-
-            // Build category filter buttons
             const scroll = document.getElementById('categories-scroll');
             menuData.categories.forEach(cat => {
-                const btn = document.createElement('button');
-                btn.className = 'cat-btn';
-                btn.textContent = cat.name;
-                btn.dataset.cat = cat.id;
-                btn.onclick = () => filterCategory(cat.id);
-                scroll.appendChild(btn);
+                const btn = document.createElement('button'); btn.className = 'cat-btn'; btn.textContent = cat.name;
+                btn.dataset.cat = cat.id; btn.onclick = () => filterCategory(cat.id); scroll.appendChild(btn);
             });
         }
 
-        // ===================== RENDERING =====================
         function renderMenu() {
-            const container = document.getElementById('menu-container');
-            container.innerHTML = '';
-
-            const categoriesToShow = currentCategory === 'all' 
-                ? menuData.categories 
-                : menuData.categories.filter(c => c.id === currentCategory);
-
-            if (currentCategory === 'all' && menuData.categories.length === 0) {
-                // Show all items without categories
-                renderItemList(container, menuData.items);
-                return;
-            }
-
-            categoriesToShow.forEach(cat => {
-                const catItems = menuData.items.filter(item => item.category_id === cat.id);
-                if (catItems.length === 0) return;
-
-                const section = document.createElement('div');
-                section.className = 'menu-section';
+            const container = document.getElementById('menu-container'); container.innerHTML = '';
+            const cats = currentCategory === 'all' ? menuData.categories : menuData.categories.filter(c => c.id === currentCategory);
+            if (currentCategory === 'all' && !menuData.categories.length) { renderItemList(container, menuData.items); return; }
+            cats.forEach(cat => {
+                const catItems = menuData.items.filter(i => i.category_id === cat.id);
+                if (!catItems.length) return;
+                const section = document.createElement('div'); section.className = 'menu-section';
                 section.innerHTML = `<div class="section-title">${cat.name}</div>`;
-                renderItemList(section, catItems);
-                container.appendChild(section);
+                renderItemList(section, catItems); container.appendChild(section);
             });
-
-            // Items without category
-            const uncategorized = menuData.items.filter(item => !item.category_id);
-            if (uncategorized.length > 0 && currentCategory === 'all') {
-                const section = document.createElement('div');
-                section.className = 'menu-section';
+            const uncategorized = menuData.items.filter(i => !i.category_id);
+            if (uncategorized.length && currentCategory === 'all') {
+                const section = document.createElement('div'); section.className = 'menu-section';
                 section.innerHTML = `<div class="section-title">Other</div>`;
-                renderItemList(section, uncategorized);
-                container.appendChild(section);
+                renderItemList(section, uncategorized); container.appendChild(section);
             }
         }
 
         function renderItemList(container, items) {
             items.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'menu-item';
+                const div = document.createElement('div'); div.className = 'menu-item';
                 const inCart = cart[item.id];
                 div.innerHTML = `
-                    <div class="item-image">
-                        ${item.image_url ? `<img src="${item.image_url}" alt="${item.name}" onerror="this.parentElement.innerHTML='🍽️'">` : '🍽️'}
-                    </div>
+                    <div class="item-image">${item.image_url ? `<img src="${item.image_url}" alt="${item.name}" onerror="this.parentElement.innerHTML='🍽️'">` : '🍽️'}</div>
                     <div class="item-info">
                         <div class="item-name">${item.name}</div>
                         ${item.description ? `<div class="item-desc">${item.description}</div>` : ''}
                         <div class="item-footer">
                             <span class="item-price">$${parseFloat(item.price).toFixed(2)}</span>
-                            ${inCart 
-                                ? `<div class="qty-controls">
-                                    <button class="qty-btn" onclick="updateQty('${item.id}', -1)">−</button>
-                                    <span class="qty-value">${inCart.quantity}</span>
-                                    <button class="qty-btn" onclick="updateQty('${item.id}', 1)">+</button>
-                                </div>`
-                                : `<button class="add-btn" onclick="addToCart('${item.id}')">+</button>`
-                            }
+                            ${inCart ? `<div class="qty-controls"><button class="qty-btn" onclick="updateQty('${item.id}', -1)">−</button><span class="qty-value">${inCart.quantity}</span><button class="qty-btn" onclick="updateQty('${item.id}', 1)">+</button></div>` : `<button class="add-btn" onclick="addToCart('${item.id}')">+</button>`}
                         </div>
                     </div>
                 `;
@@ -311,156 +198,67 @@
 
         function filterCategory(catId) {
             currentCategory = catId;
-            document.querySelectorAll('.cat-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.cat === catId);
-            });
+            document.querySelectorAll('.cat-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.cat === catId));
             renderMenu();
         }
 
-        // ===================== CART =====================
         function addToCart(itemId) {
             const item = menuData.items.find(i => i.id === itemId);
             if (!item) return;
             cart[itemId] = { item, quantity: 1, note: '' };
-            updateCartUI();
-            renderMenu();
+            updateCartUI(); renderMenu();
         }
 
         function updateQty(itemId, delta) {
             if (!cart[itemId]) return;
             cart[itemId].quantity += delta;
-            if (cart[itemId].quantity <= 0) {
-                delete cart[itemId];
-            }
-            updateCartUI();
-            renderMenu();
-            renderCartItems();
+            if (cart[itemId].quantity <= 0) delete cart[itemId];
+            updateCartUI(); renderMenu(); renderCartItems();
         }
 
-        function updateNote(itemId, note) {
-            if (cart[itemId]) cart[itemId].note = note;
-        }
+        function updateNote(itemId, note) { if (cart[itemId]) cart[itemId].note = note; }
 
         function updateCartUI() {
             const count = Object.values(cart).reduce((sum, c) => sum + c.quantity, 0);
             const total = Object.values(cart).reduce((sum, c) => sum + (c.quantity * c.item.price), 0);
-
             const bar = document.getElementById('cart-bar');
-            if (count > 0) {
-                bar.style.display = 'flex';
-                document.getElementById('cart-count').textContent = `${count} item${count !== 1 ? 's' : ''}`;
-                document.getElementById('cart-total').textContent = `$${total.toFixed(2)}`;
-            } else {
-                bar.style.display = 'none';
-            }
+            if (count > 0) { bar.style.display = 'flex'; document.getElementById('cart-count').textContent = `${count} item${count !== 1 ? 's' : ''}`; document.getElementById('cart-total').textContent = `$${total.toFixed(2)}`; }
+            else bar.style.display = 'none';
         }
 
-        function openCart() {
-            renderCartItems();
-            document.getElementById('cart-modal-overlay').classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeCart(event) {
-            if (event && event.target !== document.getElementById('cart-modal-overlay')) return;
-            document.getElementById('cart-modal-overlay').classList.remove('active');
-            document.body.style.overflow = '';
-        }
+        function openCart() { renderCartItems(); document.getElementById('cart-modal-overlay').classList.add('active'); document.body.style.overflow = 'hidden'; }
+        function closeCart(event) { if (event && event.target !== document.getElementById('cart-modal-overlay')) return; document.getElementById('cart-modal-overlay').classList.remove('active'); document.body.style.overflow = ''; }
 
         function renderCartItems() {
             const container = document.getElementById('cart-items');
             const items = Object.values(cart);
-
-            if (items.length === 0) {
-                container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--gray);">Your cart is empty</div>';
-                document.getElementById('place-order-btn').disabled = true;
-                return;
-            }
-
-            let html = '';
-            let subtotal = 0;
-
+            if (!items.length) { container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--gray);">Your cart is empty</div>'; document.getElementById('place-order-btn').disabled = true; return; }
+            let html = ''; let subtotal = 0;
             items.forEach(c => {
-                const lineTotal = c.quantity * c.item.price;
-                subtotal += lineTotal;
-                html += `
-                    <div class="cart-item">
-                        <div style="flex:1;min-width:0;">
-                            <div style="display:flex;justify-content:space-between;align-items:center;">
-                                <span class="cart-item-name">${c.item.name}</span>
-                                <span class="cart-item-price">$${lineTotal.toFixed(2)}</span>
-                            </div>
-                            <textarea class="cart-item-note" placeholder="Add a note (e.g. no onions)..." onchange="updateNote('${c.item.id}', this.value)">${c.note || ''}</textarea>
-                        </div>
-                        <div class="qty-controls" style="margin-left:0.75rem;">
-                            <button class="qty-btn" onclick="updateQty('${c.item.id}', -1)">−</button>
-                            <span class="qty-value">${c.quantity}</span>
-                            <button class="qty-btn" onclick="updateQty('${c.item.id}', 1)">+</button>
-                        </div>
-                    </div>
-                `;
+                const lineTotal = c.quantity * c.item.price; subtotal += lineTotal;
+                html += `<div class="cart-item"><div style="flex:1;min-width:0;"><div style="display:flex;justify-content:space-between;align-items:center;"><span class="cart-item-name">${c.item.name}</span><span class="cart-item-price">$${lineTotal.toFixed(2)}</span></div><textarea class="cart-item-note" placeholder="Add a note (e.g. no onions)..." onchange="updateNote('${c.item.id}', this.value)">${c.note || ''}</textarea></div><div class="qty-controls" style="margin-left:0.75rem;"><button class="qty-btn" onclick="updateQty('${c.item.id}', -1)">−</button><span class="qty-value">${c.quantity}</span><button class="qty-btn" onclick="updateQty('${c.item.id}', 1)">+</button></div></div>`;
             });
-
             container.innerHTML = html;
             document.getElementById('cart-subtotal').textContent = `$${subtotal.toFixed(2)}`;
             document.getElementById('cart-grand-total').textContent = `$${subtotal.toFixed(2)}`;
             document.getElementById('place-order-btn').disabled = false;
         }
 
-        // ===================== ORDER =====================
         async function placeOrder() {
-            const btn = document.getElementById('place-order-btn');
-            btn.disabled = true;
-            btn.textContent = 'Placing Order...';
-
+            const btn = document.getElementById('place-order-btn'); btn.disabled = true; btn.textContent = 'Placing Order...';
             try {
-                // Create order
-                const { data: order, error: orderError } = await sb
-                    .from('orders')
-                    .insert([{ table_id: tableId, status: 'pending' }])
-                    .select()
-                    .single();
-
+                const { data: order, error: orderError } = await sb.from('orders').insert([{ table_id: tableId, status: 'pending' }]).select().single();
                 if (orderError) throw orderError;
-
-                // Create order items
-                const items = Object.values(cart).map(c => ({
-                    order_id: order.id,
-                    menu_item_id: c.item.id,
-                    quantity: c.quantity,
-                    price_at_time: c.item.price,
-                    notes: c.note || null
-                }));
-
+                const items = Object.values(cart).map(c => ({ order_id: order.id, menu_item_id: c.item.id, quantity: c.quantity, price_at_time: c.item.price, notes: c.note || null }));
                 const { error: itemsError } = await sb.from('order_items').insert(items);
                 if (itemsError) throw itemsError;
-
-                // Success
-                cart = {};
-                updateCartUI();
-                closeCart();
+                cart = {}; updateCartUI(); closeCart();
                 document.getElementById('success-screen').classList.add('active');
-
-            } catch (e) {
-                console.error('Order error:', e);
-                alert('Failed to place order. Please try again.');
-                btn.disabled = false;
-                btn.textContent = 'Place Order';
-            }
+            } catch (e) { console.error('Order error:', e); alert('Failed to place order. Please try again.'); btn.disabled = false; btn.textContent = 'Place Order'; }
         }
 
-        function resetOrder() {
-            document.getElementById('success-screen').classList.remove('active');
-            renderMenu();
-        }
-
-        // ===================== ERROR =====================
-        function showError(title, text) {
-            document.getElementById('loading-screen').style.display = 'none';
-            document.getElementById('error-title').textContent = title;
-            document.getElementById('error-text').textContent = text;
-            document.getElementById('error-screen').classList.add('active');
-        }
+        function resetOrder() { document.getElementById('success-screen').classList.remove('active'); renderMenu(); }
+        function showError(title, text) { document.getElementById('loading-screen').style.display = 'none'; document.getElementById('error-title').textContent = title; document.getElementById('error-text').textContent = text; document.getElementById('error-screen').classList.add('active'); }
     </script>
 </body>
 </html>
