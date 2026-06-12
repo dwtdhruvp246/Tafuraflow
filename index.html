@@ -7,368 +7,652 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <style>
-        :root {
-            --primary: #2563eb; --primary-dark: #1d4ed8; --success: #16a34a; --warning: #ca8a04;
-            --danger: #dc2626; --dark: #1e293b; --light: #f8fafc; --gray: #64748b; --border: #e2e8f0;
-            --analytics-bg: #0f172a; --analytics-card: #1e293b; --analytics-text: #e2e8f0;
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        obsidian: '#0a0a0f',
+                        charcoal: '#13131f',
+                        slate: '#1a1a2e',
+                        panel: '#16162a',
+                        neon: '#00ff88',
+                        'neon-dim': '#00cc6a',
+                        'neon-glow': 'rgba(0,255,136,0.15)',
+                        cyber: '#0ea5e9',
+                        'cyber-dim': '#0284c7',
+                        surface: 'rgba(255,255,255,0.03)',
+                        'surface-hover': 'rgba(255,255,255,0.06)',
+                        'surface-active': 'rgba(255,255,255,0.08)',
+                        muted: '#6b7280',
+                        'muted-light': '#9ca3af',
+                        danger: '#ef4444',
+                        warning: '#f59e0b',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    animation: {
+                        'pulse-glow': 'pulseGlow 2s ease-in-out infinite',
+                        'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                        'fade-in': 'fadeIn 0.3s ease-out',
+                        'scan': 'scan 3s linear infinite',
+                        'shimmer': 'shimmer 2s infinite',
+                    },
+                    keyframes: {
+                        pulseGlow: {
+                            '0%, 100%': { boxShadow: '0 0 5px rgba(0,255,136,0.3), 0 0 20px rgba(0,255,136,0.1)' },
+                            '50%': { boxShadow: '0 0 15px rgba(0,255,136,0.5), 0 0 40px rgba(0,255,136,0.2)' },
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(100%)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'scale(0.95)' },
+                            '100%': { opacity: '1', transform: 'scale(1)' },
+                        },
+                        scan: {
+                            '0%': { transform: 'translateY(-100%)' },
+                            '100%': { transform: 'translateY(100%)' },
+                        },
+                        shimmer: {
+                            '0%': { backgroundPosition: '-200% 0' },
+                            '100%': { backgroundPosition: '200% 0' },
+                        },
+                    },
+                }
+            }
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f1f5f9; color: #334155; }
-        .btn { padding: 0.625rem 1.25rem; border: none; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
-        .btn-success { background: var(--success); color: white; }
-        .btn-danger { background: var(--danger); color: white; }
-        .btn-warning { background: var(--warning); color: white; }
-        .btn-secondary { background: white; color: var(--dark); border: 1px solid var(--border); }
-        .btn-sm { padding: 0.375rem 0.75rem; font-size: 0.75rem; }
-        .btn-lg { padding: 0.875rem 1.5rem; font-size: 1rem; }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * { -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Inter', system-ui, sans-serif; }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,255,136,0.15); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0,255,136,0.3); }
 
-        /* Login */
-        .login-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
-        .login-box { background: white; padding: 2.5rem; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); width: 100%; max-width: 400px; margin: 1rem; }
-        .login-box h1 { color: var(--dark); margin-bottom: 0.5rem; font-size: 1.5rem; }
-        .login-box p { color: var(--gray); margin-bottom: 1.5rem; }
-        .form-group { margin-bottom: 1rem; }
-        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.875rem; }
-        .form-group input, .form-group select { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; font-size: 1rem; background: white; }
-        .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-        textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; font-size: 0.875rem; resize: vertical; font-family: inherit; }
-        textarea:focus { outline: none; border-color: var(--primary); }
+        .glass {
+            background: rgba(22, 22, 42, 0.7);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .glass-strong {
+            background: rgba(22, 22, 42, 0.85);
+            backdrop-filter: blur(30px) saturate(200%);
+            -webkit-backdrop-filter: blur(30px) saturate(200%);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .glass-panel {
+            background: rgba(19, 19, 31, 0.6);
+            backdrop-filter: blur(12px) saturate(150%);
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 1rem;
+        }
 
-        /* Layout */
-        .app-layout { display: flex; min-height: 100vh; }
-        .sidebar { width: 260px; background: var(--dark); color: white; display: flex; flex-direction: column; flex-shrink: 0; }
-        .sidebar-header { padding: 1.5rem; border-bottom: 1px solid #334155; }
-        .sidebar-header h2 { font-size: 1.25rem; display: flex; align-items: center; gap: 0.5rem; }
-        .sidebar-nav { flex: 1; padding: 1rem 0; }
-        .sidebar-nav a { display: flex; align-items: center; gap: 0.75rem; padding: 0.875rem 1.5rem; color: #94a3b8; text-decoration: none; font-size: 0.875rem; transition: all 0.2s; border-left: 3px solid transparent; }
-        .sidebar-nav a:hover, .sidebar-nav a.active { background: #334155; color: white; border-left-color: var(--primary); }
-        .sidebar-nav a.hidden { display: none; }
-        .sidebar-footer { padding: 1rem 1.5rem; border-top: 1px solid #334155; }
-        .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
-        .top-bar { height: 64px; background: white; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 1.5rem; }
-        .content-area { flex: 1; overflow-y: auto; padding: 1.5rem; }
-        .mobile-toggle { display: none; background: none; border: none; font-size: 1.5rem; cursor: pointer; }
+        .neon-border {
+            border: 1px solid rgba(0,255,136,0.2);
+            transition: all 0.3s ease;
+        }
+        .neon-border:hover {
+            border-color: rgba(0,255,136,0.5);
+            box-shadow: 0 0 20px rgba(0,255,136,0.1);
+        }
+        .neon-text {
+            text-shadow: 0 0 10px rgba(0,255,136,0.5);
+        }
+        .neon-text-subtle {
+            text-shadow: 0 0 6px rgba(0,255,136,0.3);
+        }
 
-        .section { display: none; }
-        .section.active { display: block; }
+        .btn-cyber {
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-cyber::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.4s ease;
+        }
+        .btn-cyber:hover::before { left: 100%; }
+        .btn-cyber:active { transform: scale(0.97); }
 
-        .card { background: white; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 1.5rem; margin-bottom: 1.5rem; }
-        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem; }
-        .card-title { font-size: 1.125rem; font-weight: 600; color: var(--dark); }
+        .btn-primary-cyber {
+            background: linear-gradient(135deg, #00ff88, #00cc6a);
+            color: #0a0a0f;
+            box-shadow: 0 2px 12px rgba(0,255,136,0.3);
+        }
+        .btn-primary-cyber:hover {
+            box-shadow: 0 4px 20px rgba(0,255,136,0.5);
+            transform: translateY(-1px);
+        }
+        .btn-danger-cyber {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            box-shadow: 0 2px 12px rgba(239,68,68,0.3);
+        }
+        .btn-danger-cyber:hover {
+            box-shadow: 0 4px 20px rgba(239,68,68,0.5);
+            transform: translateY(-1px);
+        }
+        .btn-success-cyber {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            box-shadow: 0 2px 12px rgba(34,197,94,0.3);
+        }
+        .btn-success-cyber:hover {
+            box-shadow: 0 4px 20px rgba(34,197,94,0.5);
+            transform: translateY(-1px);
+        }
+        .btn-secondary-cyber {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #e2e8f0;
+        }
+        .btn-secondary-cyber:hover {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(0,255,136,0.3);
+            color: #00ff88;
+        }
+        .btn-warning-cyber {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            box-shadow: 0 2px 12px rgba(245,158,11,0.3);
+        }
 
-        /* Dashboard Stats */
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-        .stat-card { background: white; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
-        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-        .stat-value { font-size: 2.5rem; font-weight: 700; color: var(--primary); }
-        .stat-label { color: var(--gray); font-size: 0.875rem; margin-top: 0.25rem; }
-        .stat-fraction { font-size: 0.875rem; color: var(--gray); margin-top: 0.25rem; }
-        .live-timer { font-family: 'SF Mono', monospace; color: var(--warning); font-weight: 600; font-size: 0.875rem; }
-        .live-timer::before { content: "⏱️ "; }
+        .card-cyber {
+            background: rgba(19, 19, 31, 0.6);
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 1rem;
+            transition: all 0.3s ease;
+        }
+        .card-cyber:hover {
+            border-color: rgba(0,255,136,0.1);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+        }
 
-        /* Tables */
-        .tables-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
-        .table-card { background: white; border-radius: 0.75rem; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 4px solid var(--gray); transition: transform 0.2s; cursor: pointer; }
-        .table-card:hover { transform: translateY(-2px); }
-        .table-card.occupied { border-left-color: var(--success); }
-        .table-card.available { border-left-color: var(--gray); }
-        .table-number { font-size: 1.5rem; font-weight: 700; color: var(--dark); }
-        .table-status { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; margin-top: 0.5rem; text-transform: uppercase; }
-        .status-available { background: #f1f5f9; color: var(--gray); }
-        .status-occupied { background: #dcfce7; color: #166534; }
-        .status-closed { background: #fee2e2; color: #991b1b; }
-        .table-actions { display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap; }
-        .table-orders { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.875rem; }
-        .table-order-item { display: flex; justify-content: space-between; padding: 0.25rem 0; }
+        .stat-card-cyber {
+            background: linear-gradient(135deg, rgba(19,19,31,0.8), rgba(22,22,42,0.6));
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 1rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card-cyber::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(0,255,136,0.3), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .stat-card-cyber:hover::before { opacity: 1; }
+        .stat-card-cyber:hover {
+            transform: translateY(-2px);
+            border-color: rgba(0,255,136,0.15);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,255,136,0.05);
+        }
 
-        /* Menu */
-        .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
-        .menu-item-card { background: white; border-radius: 0.75rem; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .menu-item-image { height: 160px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; color: var(--gray); font-size: 2rem; overflow: hidden; position: relative; }
-        .menu-item-image img { width: 100%; height: 100%; object-fit: cover; }
-        .menu-item-info { padding: 1rem; }
-        .menu-item-name { font-weight: 600; margin-bottom: 0.25rem; }
-        .menu-item-meta { color: var(--gray); font-size: 0.875rem; margin-bottom: 0.5rem; }
-        .menu-item-footer { display: flex; justify-content: space-between; align-items: center; }
-        .menu-item-price { color: var(--primary); font-weight: 700; }
-        .menu-item-actions { display: flex; gap: 0.5rem; align-items: center; }
-        .toggle-switch { position: relative; width: 44px; height: 24px; }
-        .toggle-switch input { opacity: 0; width: 0; height: 0; }
-        .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #cbd5e1; border-radius: 24px; transition: 0.3s; }
-        .toggle-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
-        .toggle-switch input:checked + .toggle-slider { background: var(--success); }
-        .toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
+        .input-cyber {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: #e2e8f0;
+            transition: all 0.2s ease;
+        }
+        .input-cyber:focus {
+            border-color: rgba(0,255,136,0.4);
+            box-shadow: 0 0 0 3px rgba(0,255,136,0.05);
+            outline: none;
+        }
+        .input-cyber::placeholder { color: #6b7280; }
 
-        .category-tags { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
-        .category-tag { background: #eff6ff; color: var(--primary); padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.875rem; display: flex; align-items: center; gap: 0.5rem; }
-        .category-tag button { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 1rem; line-height: 1; }
+        .sidebar-cyber {
+            background: linear-gradient(180deg, #0d0d18 0%, #13131f 100%);
+            border-right: 1px solid rgba(255,255,255,0.04);
+        }
+        .sidebar-nav-item {
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+        .sidebar-nav-item:hover, .sidebar-nav-item.active {
+            background: rgba(0,255,136,0.05);
+            border-left-color: #00ff88;
+            color: #00ff88;
+        }
 
-        /* Kitchen */
-        .dept-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
-        .dept-tab { padding: 0.625rem 1.25rem; border-radius: 0.5rem; border: 1px solid var(--border); background: white; font-size: 0.875rem; font-weight: 500; cursor: pointer; }
-        .dept-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
-        .kitchen-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
-        .kitchen-card { background: white; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-top: 4px solid var(--warning); cursor: pointer; transition: all 0.3s; }
-        .kitchen-card:hover { transform: translateY(-2px); }
-        .kitchen-card.preparing { border-top-color: var(--primary); }
-        .kitchen-card.ready { border-top-color: var(--success); }
-        .kitchen-table { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
-        .kitchen-time { color: var(--gray); font-size: 0.875rem; margin-bottom: 1rem; }
-        .kitchen-items { margin-bottom: 1rem; }
-        .kitchen-item { padding: 0.5rem 0; border-bottom: 1px solid #f1f5f9; font-size: 1.125rem; }
-        .kitchen-item strong { color: var(--primary); margin-right: 0.5rem; }
-        .kitchen-status { padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 600; text-align: center; }
+        .top-bar-cyber {
+            background: rgba(13, 13, 24, 0.9);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
 
-        /* Bills */
-        .bill-card { background: white; border-radius: 0.75rem; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1rem; }
-        .bill-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem; }
-        .bill-table { font-weight: 700; font-size: 1.125rem; }
-        .bill-status { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
-        .status-unpaid { background: #fef3c7; color: #92400e; }
-        .status-paid { background: #dcfce7; color: #166534; }
-        .bill-amounts { margin-top: 0.75rem; }
-        .bill-row { display: flex; justify-content: space-between; padding: 0.25rem 0; font-size: 0.875rem; }
-        .bill-total { display: flex; justify-content: space-between; font-weight: 700; font-size: 1.125rem; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 2px solid var(--border); }
-        .bill-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+        .modal-cyber {
+            background: linear-gradient(180deg, #16162a, #13131f);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 1.5rem;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.6);
+        }
+        .modal-overlay-cyber {
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px);
+        }
 
-        /* Settings */
-        .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; }
-        .perm-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-top: 0.5rem; }
-        .perm-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; }
+        .table-card-cyber {
+            background: rgba(19, 19, 31, 0.5);
+            border: 1px solid rgba(255,255,255,0.04);
+            border-left: 3px solid rgba(255,255,255,0.06);
+            border-radius: 1rem;
+            transition: all 0.3s ease;
+        }
+        .table-card-cyber.occupied {
+            border-left-color: #00ff88;
+            background: rgba(0,255,136,0.03);
+        }
+        .table-card-cyber:hover {
+            transform: translateY(-2px);
+            border-color: rgba(0,255,136,0.1);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
 
-        /* Modal */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
-        .modal-overlay.active { display: flex; }
-        .modal { background: white; border-radius: 1rem; padding: 2rem; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; position: relative; }
-        .modal-close { position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--gray); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 0.25rem; }
-        .modal-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; padding-right: 2rem; }
-        .timer { font-family: monospace; color: var(--warning); font-weight: 600; }
+        .kitchen-card-cyber {
+            background: rgba(19, 19, 31, 0.6);
+            border: 1px solid rgba(255,255,255,0.04);
+            border-top: 3px solid #f59e0b;
+            border-radius: 1rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .kitchen-card-cyber.preparing { border-top-color: #0ea5e9; }
+        .kitchen-card-cyber.ready { border-top-color: #00ff88; }
+        .kitchen-card-cyber:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
 
-        /* Lists */
-        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: white; border-radius: 0.5rem; margin-bottom: 0.5rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-        .list-item-info { flex: 1; }
-        .list-item-title { font-weight: 600; }
-        .list-item-sub { color: var(--gray); font-size: 0.875rem; }
+        .bill-card-cyber {
+            background: rgba(19, 19, 31, 0.5);
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 1rem;
+            transition: all 0.3s ease;
+        }
+        .bill-card-cyber:hover {
+            border-color: rgba(0,255,136,0.1);
+        }
 
-        .empty-state { text-align: center; padding: 3rem; color: var(--gray); }
-        .empty-state-icon { font-size: 3rem; margin-bottom: 1rem; }
+        .menu-item-card-cyber {
+            background: rgba(19, 19, 31, 0.5);
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 1rem;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .menu-item-card-cyber:hover {
+            border-color: rgba(0,255,136,0.15);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+            transform: translateY(-2px);
+        }
 
-        /* ============ ANALYTICS PAGE ============ */
-        .analytics-page { background: var(--analytics-bg); min-height: 100vh; }
-        .analytics-page .content-area { background: var(--analytics-bg); }
-        .analytics-page .card { background: var(--analytics-card); color: var(--analytics-text); border: 1px solid #334155; }
-        .analytics-page .card-title { color: var(--analytics-text); }
-        .analytics-page .stat-value { color: #38bdf8; }
-        .analytics-page .stat-label { color: #94a3b8; }
-        .analytics-page .stat-fraction { color: #94a3b8; }
-        .analytics-page .form-group input, .analytics-page .form-group select { background: #1e293b; color: white; border-color: #334155; }
-        .analytics-page .btn-secondary { background: #334155; color: white; border-color: #475569; }
-        .analytics-page .empty-state { color: #94a3b8; }
-        .analytics-page .list-item { background: #1e293b; color: #e2e8f0; }
-        .analytics-page .list-item-sub { color: #94a3b8; }
-        .analytics-page .bill-card { background: #1e293b; color: #e2e8f0; }
-        .analytics-page .bill-row { color: #94a3b8; }
-        .analytics-page .bill-total { border-top-color: #475569; }
-        .analytics-page .table-order-item { color: #94a3b8; }
-        .analytics-page .status-unpaid { background: #451a03; color: #fbbf24; }
-        .analytics-page .status-paid { background: #14532d; color: #4ade80; }
+        .toggle-cyber {
+            position: relative;
+            width: 44px; height: 24px;
+        }
+        .toggle-cyber input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider-cyber {
+            position: absolute; cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #334155;
+            border-radius: 24px;
+            transition: 0.3s;
+        }
+        .toggle-slider-cyber::before {
+            position: absolute; content: "";
+            height: 18px; width: 18px;
+            left: 3px; bottom: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+        .toggle-cyber input:checked + .toggle-slider-cyber {
+            background: #00ff88;
+            box-shadow: 0 0 10px rgba(0,255,136,0.3);
+        }
+        .toggle-cyber input:checked + .toggle-slider-cyber::before {
+            transform: translateX(20px);
+        }
 
-        .analytics-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
-        .analytics-filters { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
-        .analytics-filters select, .analytics-filters input { padding: 0.5rem 0.75rem; border-radius: 0.5rem; border: 1px solid #334155; background: #1e293b; color: white; font-size: 0.875rem; }
-        .analytics-filters button { padding: 0.5rem 1rem; }
+        .dept-tab-cyber {
+            padding: 0.625rem 1.25rem;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.03);
+            color: #9ca3af;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .dept-tab-cyber:hover {
+            border-color: rgba(0,255,136,0.3);
+            color: #00ff88;
+        }
+        .dept-tab-cyber.active {
+            background: linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,255,136,0.05));
+            border-color: rgba(0,255,136,0.5);
+            color: #00ff88;
+            box-shadow: 0 0 15px rgba(0,255,136,0.1);
+        }
 
-        .chart-container { position: relative; height: 300px; margin-bottom: 1rem; }
-        .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
-        .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-        .kpi-card { background: var(--analytics-card); border-radius: 0.75rem; padding: 1.5rem; border: 1px solid #334155; }
-        .kpi-value { font-size: 1.875rem; font-weight: 700; color: #38bdf8; margin-bottom: 0.25rem; }
-        .kpi-label { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
-        .kpi-change { font-size: 0.875rem; margin-top: 0.5rem; }
-        .kpi-change.up { color: #4ade80; }
-        .kpi-change.down { color: #f87171; }
+        .cat-tag-cyber {
+            background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(14,165,233,0.05));
+            border: 1px solid rgba(0,255,136,0.15);
+            color: #00ff88;
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+            font-size: 0.875rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
 
-        .data-table { width: 100%; border-collapse: collapse; }
-        .data-table th { text-align: left; padding: 0.75rem 1rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; border-bottom: 1px solid #334155; }
-        .data-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #334155; font-size: 0.875rem; }
-        .data-table tr:hover td { background: rgba(255,255,255,0.03); }
-        .trend-bar { height: 4px; background: #334155; border-radius: 2px; overflow: hidden; margin-top: 0.25rem; }
-        .trend-bar-fill { height: 100%; background: linear-gradient(90deg, #38bdf8, #818cf8); border-radius: 2px; transition: width 0.5s ease; }
+        .scan-line {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(0,255,136,0.4), transparent);
+            animation: scan 3s linear infinite;
+            pointer-events: none;
+        }
 
-        .top-items-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
-        .top-item-row { display: flex; justify-content: space-between; align-items: center; padding: 0.625rem 0; border-bottom: 1px solid #334155; }
-        .top-item-name { font-weight: 500; }
-        .top-item-count { color: #94a3b8; font-size: 0.875rem; }
-        .top-item-revenue { font-weight: 600; color: #4ade80; }
+        .grid-bg {
+            background-image:
+                linear-gradient(rgba(0,255,136,0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,255,136,0.015) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+
+        .analytics-kpi {
+            background: linear-gradient(135deg, rgba(19,19,31,0.8), rgba(22,22,42,0.6));
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 1rem;
+            transition: all 0.3s ease;
+        }
+        .analytics-kpi:hover {
+            border-color: rgba(0,255,136,0.1);
+            transform: translateY(-1px);
+        }
+
+        .data-table-cyber th {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #6b7280;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .data-table-cyber td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            font-size: 0.875rem;
+            color: #e2e8f0;
+        }
+        .data-table-cyber tr:hover td {
+            background: rgba(255,255,255,0.02);
+        }
+
+        .receipt-divider {
+            border-top: 2px dashed rgba(0,255,136,0.15);
+            position: relative;
+        }
+        .receipt-divider::before, .receipt-divider::after {
+            content: '';
+            position: absolute;
+            top: -6px;
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            background: #16162a;
+        }
+        .receipt-divider::before { left: -6px; }
+        .receipt-divider::after { right: -6px; }
+
+        .status-available { background: rgba(255,255,255,0.05); color: #9ca3af; }
+        .status-occupied { background: rgba(0,255,136,0.1); color: #00ff88; }
+        .status-closed { background: rgba(239,68,68,0.1); color: #ef4444; }
+        .status-unpaid { background: rgba(245,158,11,0.1); color: #f59e0b; }
+        .status-paid { background: rgba(0,255,136,0.1); color: #00ff88; }
+
+        .list-item-cyber {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: rgba(255,255,255,0.02);
+            border-radius: 0.75rem;
+            margin-bottom: 0.5rem;
+            border: 1px solid rgba(255,255,255,0.03);
+            transition: all 0.2s ease;
+        }
+        .list-item-cyber:hover {
+            background: rgba(255,255,255,0.04);
+            border-color: rgba(0,255,136,0.1);
+        }
+
+        .empty-state-cyber {
+            text-align: center;
+            padding: 3rem;
+            color: #6b7280;
+        }
+
+        .live-timer {
+            font-family: 'JetBrains Mono', monospace;
+            color: #f59e0b;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
 
         @media (max-width: 768px) {
-            .sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 40; transform: translateX(-100%); transition: transform 0.3s; }
-            .sidebar.open { transform: translateX(0); }
-            .mobile-toggle { display: block; }
-            .stats-grid { grid-template-columns: 1fr; }
-            .settings-grid { grid-template-columns: 1fr; }
-            .kitchen-grid { grid-template-columns: 1fr; }
-            .tables-grid { grid-template-columns: 1fr; }
-            .menu-grid { grid-template-columns: 1fr; }
-            .chart-grid { grid-template-columns: 1fr; }
-            .kpi-row { grid-template-columns: repeat(2, 1fr); }
+            .sidebar-cyber { position: fixed; left: 0; top: 0; bottom: 0; z-index: 40; transform: translateX(-100%); transition: transform 0.3s; }
+            .sidebar-cyber.open { transform: translateX(0); }
         }
     </style>
 <base target="_blank">
 </head>
-<body>
+<body class="bg-obsidian text-gray-100 min-h-screen grid-bg">
+
     <!-- LOGIN -->
-    <div id="login-section" class="login-container">
-        <div class="login-box">
-            <h1>🔐 DineQR Admin</h1>
-            <p>Sign in to manage your restaurant</p>
-            <div class="form-group">
-                <label>Email Address</label>
-                <input type="email" id="login-email" placeholder="admin@restaurant.com" autocomplete="email">
+    <div id="login-section" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-obsidian via-charcoal to-slate">
+        <div class="w-full max-w-md mx-4">
+            <div class="glass-strong rounded-2xl p-8 shadow-2xl">
+                <div class="text-center mb-8">
+                    <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-neon/20 to-cyber/20 border border-neon/20 flex items-center justify-center mb-4">
+                        <i data-lucide="shield-check" class="w-8 h-8 text-neon"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-white tracking-tight">DineQR Admin</h1>
+                    <p class="text-muted text-sm mt-2">Sign in to manage your restaurant</p>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-muted-light uppercase tracking-wider mb-2">Email Address</label>
+                        <input type="email" id="login-email" placeholder="admin@restaurant.com" autocomplete="email" class="input-cyber w-full px-4 py-3 rounded-xl text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-muted-light uppercase tracking-wider mb-2">Password</label>
+                        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" class="input-cyber w-full px-4 py-3 rounded-xl text-sm">
+                    </div>
+                    <div id="login-error" class="text-danger text-sm min-h-[1.25rem]"></div>
+                    <button id="login-btn" class="btn-cyber btn-primary-cyber w-full py-3.5 rounded-xl font-semibold text-sm tracking-wide" onclick="handleLogin()">Sign In</button>
+                </div>
+                <div class="mt-6 text-center text-[10px] text-muted font-mono tracking-[0.2em] uppercase">DineQR System v2.0</div>
             </div>
-            <div class="form-group">
-                <label>Password</label>
-                <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
-            </div>
-            <div id="login-error" style="color:var(--danger);margin-bottom:1rem;font-size:0.875rem;min-height:1.25rem;"></div>
-            <button id="login-btn" class="btn btn-primary" style="width:100%;" onclick="handleLogin()">Sign In</button>
         </div>
     </div>
 
     <!-- APP -->
-    <div id="app-section" class="app-layout" style="display:none;">
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <h2>🍽️ DineQR</h2>
-                <p style="color:#94a3b8;font-size:0.75rem;margin-top:0.25rem;">Restaurant OS</p>
+    <div id="app-section" class="flex min-h-screen hidden">
+        <aside class="sidebar-cyber w-[260px] flex-shrink-0 flex flex-col fixed md:relative h-screen z-40" id="sidebar">
+            <div class="p-6 border-b border-white/5">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-neon/20 to-cyber/20 border border-neon/20 flex items-center justify-center">
+                        <i data-lucide="utensils-crossed" class="w-5 h-5 text-neon"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-white tracking-tight">DineQR</h2>
+                        <p class="text-[10px] text-muted uppercase tracking-[0.2em]">Restaurant OS</p>
+                    </div>
+                </div>
             </div>
-            <nav class="sidebar-nav" id="sidebar-nav">
-                <a href="#" data-section="dashboard" class="active" onclick="showSection(&quot;dashboard&quot;);return false;">📊 Dashboard</a>
-                <a href="#" data-section="tables" onclick="showSection(&quot;tables&quot;);return false;">🪑 Tables</a>
-                <a href="#" data-section="menu" onclick="showSection(&quot;menu&quot;);return false;">🍔 Menu</a>
-                <a href="#" data-section="kitchen" onclick="showSection(&quot;kitchen&quot;);return false;">👨‍🍳 Kitchen</a>
-                <a href="#" data-section="bills" onclick="showSection(&quot;bills&quot;);return false;">🧾 Bills</a>
-                <a href="#" data-section="analytics" onclick="showSection(&quot;analytics&quot;);return false;">📈 Analytics</a>
-                <a href="#" data-section="settings" onclick="showSection(&quot;settings&quot;);return false;">⚙️ Settings</a>
+            <nav class="flex-1 py-4 px-3 space-y-1" id="sidebar-nav">
+                <a href="#" data-section="dashboard" class="sidebar-nav-item active flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-light hover:text-neon" onclick="showSection(&quot;dashboard&quot;);return false;">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard
+                </a>
+                <a href="#" data-section="tables" class="sidebar-nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-light hover:text-neon" onclick="showSection(&quot;tables&quot;);return false;">
+                    <i data-lucide="layout-grid" class="w-4 h-4"></i> Tables
+                </a>
+                <a href="#" data-section="menu" class="sidebar-nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-light hover:text-neon" onclick="showSection(&quot;menu&quot;);return false;">
+                    <i data-lucide="chef-hat" class="w-4 h-4"></i> Menu
+                </a>
+                <a href="#" data-section="kitchen" class="sidebar-nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-light hover:text-neon" onclick="showSection(&quot;kitchen&quot;);return false;">
+                    <i data-lucide="flame" class="w-4 h-4"></i> Kitchen
+                </a>
+                <a href="#" data-section="bills" class="sidebar-nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-light hover:text-neon" onclick="showSection(&quot;bills&quot;);return false;">
+                    <i data-lucide="receipt" class="w-4 h-4"></i> Bills
+                </a>
+                <a href="#" data-section="analytics" class="sidebar-nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-light hover:text-neon" onclick="showSection(&quot;analytics&quot;);return false;">
+                    <i data-lucide="bar-chart-3" class="w-4 h-4"></i> Analytics
+                </a>
+                <a href="#" data-section="settings" class="sidebar-nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-light hover:text-neon" onclick="showSection(&quot;settings&quot;);return false;">
+                    <i data-lucide="settings" class="w-4 h-4"></i> Settings
+                </a>
             </nav>
-            <div class="sidebar-footer">
-                <div style="font-size:0.75rem;margin-bottom:0.75rem;word-break:break-all;color:#94a3b8;" id="user-email">Admin</div>
-                <button class="btn btn-danger" style="width:100%;" onclick="handleLogout()">Logout</button>
+            <div class="p-4 border-t border-white/5">
+                <div class="text-[10px] text-muted mb-3 break-all" id="user-email">Admin</div>
+                <button class="btn-cyber btn-danger-cyber w-full py-2.5 rounded-xl text-sm font-medium" onclick="handleLogout()">Logout</button>
             </div>
         </aside>
 
-        <div class="main-content" id="main-content">
-            <div class="top-bar">
-                <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
-                <h3 id="page-title">Dashboard</h3>
-                <div></div>
+        <div class="flex-1 flex flex-col min-w-0 md:ml-0 ml-0">
+            <div class="top-bar-cyber h-16 flex items-center justify-between px-6 sticky top-0 z-30">
+                <button class="md:hidden bg-none border-none text-white text-xl cursor-pointer" onclick="toggleSidebar()">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+                <h3 id="page-title" class="text-lg font-semibold text-white tracking-tight">Dashboard</h3>
+                <div class="w-6"></div>
             </div>
-            <div class="content-area" id="content-area">
+            <div class="flex-1 overflow-y-auto p-6" id="content-area">
 
                 <!-- DASHBOARD -->
                 <section id="dashboard-section" class="section active">
-                    <div class="stats-grid">
-                        <div class="stat-card" onclick="showDashboardDetail(&quot;occupied&quot;)">
-                            <div class="stat-value" id="dash-occupied">0/0</div>
-                            <div class="stat-label">Occupied Tables</div>
-                            <div class="stat-fraction">Click to view occupied tables</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
+                        <div class="stat-card-cyber p-6" onclick="showDashboardDetail(&quot;occupied&quot;)">
+                            <div class="text-3xl font-bold text-neon font-mono neon-text-subtle" id="dash-occupied">0/0</div>
+                            <div class="text-sm text-muted-light mt-1">Occupied Tables</div>
+                            <div class="text-xs text-muted mt-2">Click to view details</div>
                         </div>
-                        <div class="stat-card" onclick="showDashboardDetail(&quot;pending&quot;)">
-                            <div class="stat-value" id="dash-pending">0/0</div>
-                            <div class="stat-label">Pending Orders</div>
-                            <div class="stat-fraction">Tables occupied but not ordered</div>
+                        <div class="stat-card-cyber p-6" onclick="showDashboardDetail(&quot;pending&quot;)">
+                            <div class="text-3xl font-bold text-warning font-mono" id="dash-pending">0/0</div>
+                            <div class="text-sm text-muted-light mt-1">Pending Orders</div>
+                            <div class="text-xs text-muted mt-2">Tables occupied but not ordered</div>
                         </div>
-                        <div class="stat-card" onclick="showDashboardDetail(&quot;preparing&quot;)">
-                            <div class="stat-value" id="dash-preparing">0</div>
-                            <div class="stat-label">Preparing</div>
-                            <div class="stat-fraction">Tables waiting for food</div>
+                        <div class="stat-card-cyber p-6" onclick="showDashboardDetail(&quot;preparing&quot;)">
+                            <div class="text-3xl font-bold text-cyber font-mono" id="dash-preparing">0</div>
+                            <div class="text-sm text-muted-light mt-1">Preparing</div>
+                            <div class="text-xs text-muted mt-2">Tables waiting for food</div>
                         </div>
-                        <div class="stat-card" onclick="showDashboardDetail(&quot;occupied-today&quot;)">
-                            <div class="stat-value" id="dash-occupied-today">0</div>
-                            <div class="stat-label">Tables Occupied Today</div>
-                            <div class="stat-fraction">Total tables occupied today</div>
+                        <div class="stat-card-cyber p-6" onclick="showDashboardDetail(&quot;occupied-today&quot;)">
+                            <div class="text-3xl font-bold text-white font-mono" id="dash-occupied-today">0</div>
+                            <div class="text-sm text-muted-light mt-1">Tables Today</div>
+                            <div class="text-xs text-muted mt-2">Total occupied today</div>
                         </div>
-                        <div class="stat-card" onclick="showDashboardDetail(&quot;occupied-month&quot;)">
-                            <div class="stat-value" id="dash-occupied-month">0</div>
-                            <div class="stat-label">Tables Occupied This Month</div>
-                            <div class="stat-fraction">Total tables occupied this month</div>
+                        <div class="stat-card-cyber p-6" onclick="showDashboardDetail(&quot;occupied-month&quot;)">
+                            <div class="text-3xl font-bold text-white font-mono" id="dash-occupied-month">0</div>
+                            <div class="text-sm text-muted-light mt-1">Tables This Month</div>
+                            <div class="text-xs text-muted mt-2">Unique tables served</div>
                         </div>
                     </div>
                 </section>
 
                 <!-- TABLES -->
                 <section id="tables-section" class="section">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Manage Tables</h3>
-                            <div style="display:flex;gap:0.5rem;align-items:center;">
-                                <input type="number" id="new-table-number" placeholder="Table #" min="1" style="width:100px;padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;">
-                                <button class="btn btn-success" onclick="addTable()">Add Table</button>
+                    <div class="card-cyber p-6">
+                        <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                            <h3 class="text-lg font-semibold text-white tracking-tight">Manage Tables</h3>
+                            <div class="flex gap-2 items-center">
+                                <input type="number" id="new-table-number" placeholder="Table #" min="1" class="input-cyber w-24 px-3 py-2.5 rounded-xl text-sm">
+                                <button class="btn-cyber btn-success-cyber px-4 py-2.5 rounded-xl text-sm font-medium" onclick="addTable()">Add Table</button>
                             </div>
                         </div>
-                        <div id="tables-grid" class="tables-grid"></div>
+                        <div id="tables-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
                     </div>
                 </section>
 
                 <!-- MENU -->
                 <section id="menu-section" class="section">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Categories</h3>
-                            <div style="display:flex;gap:0.5rem;">
-                                <input type="text" id="new-category-name" placeholder="Category name" style="padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;">
-                                <button class="btn btn-success" onclick="addCategory()">Add</button>
+                    <div class="card-cyber p-6 mb-6">
+                        <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                            <h3 class="text-lg font-semibold text-white tracking-tight">Categories</h3>
+                            <div class="flex gap-2">
+                                <input type="text" id="new-category-name" placeholder="Category name" class="input-cyber px-4 py-2.5 rounded-xl text-sm">
+                                <button class="btn-cyber btn-success-cyber px-4 py-2.5 rounded-xl text-sm font-medium" onclick="addCategory()">Add</button>
                             </div>
                         </div>
-                        <div id="categories-list" class="category-tags"></div>
+                        <div id="categories-list" class="flex flex-wrap gap-2"></div>
                     </div>
-                    <div class="card">
-                        <div class="card-header"><h3 class="card-title">Add Menu Item</h3></div>
-                        <div class="form-group">
-                            <input type="text" id="item-name" placeholder="Item name *" style="width:100%;padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;margin-bottom:0.75rem;">
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
-                                <input type="number" id="item-price" placeholder="Price *" step="0.01" min="0" style="padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;">
-                                <select id="item-category" style="padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;background:white;"><option value="">Category</option></select>
+                    <div class="card-cyber p-6 mb-6">
+                        <h3 class="text-lg font-semibold text-white tracking-tight mb-4">Add Menu Item</h3>
+                        <div class="space-y-3">
+                            <input type="text" id="item-name" placeholder="Item name *" class="input-cyber w-full px-4 py-3 rounded-xl text-sm">
+                            <div class="grid grid-cols-2 gap-3">
+                                <input type="number" id="item-price" placeholder="Price *" step="0.01" min="0" class="input-cyber px-4 py-3 rounded-xl text-sm">
+                                <select id="item-category" class="input-cyber px-4 py-3 rounded-xl text-sm bg-transparent"><option value="">Category</option></select>
                             </div>
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
-                                <select id="item-department" style="padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;background:white;"><option value="">Department</option></select>
-                                <input type="file" id="item-image-file" accept="image/*" style="padding:0.375rem;">
+                            <div class="grid grid-cols-2 gap-3">
+                                <select id="item-department" class="input-cyber px-4 py-3 rounded-xl text-sm bg-transparent"><option value="">Department</option></select>
+                                <input type="file" id="item-image-file" accept="image/*" class="input-cyber px-4 py-2.5 rounded-xl text-sm file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:bg-neon/10 file:text-neon">
                             </div>
-                            <input type="text" id="item-image-url" placeholder="Or paste image URL (optional)" style="width:100%;padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;margin-bottom:0.75rem;">
-                            <textarea id="item-desc" placeholder="Description (optional)" rows="2" style="margin-bottom:0.75rem;"></textarea>
-                            <button class="btn btn-success" onclick="addMenuItem()">Add Menu Item</button>
+                            <input type="text" id="item-image-url" placeholder="Or paste image URL (optional)" class="input-cyber w-full px-4 py-3 rounded-xl text-sm">
+                            <textarea id="item-desc" placeholder="Description (optional)" rows="2" class="input-cyber w-full px-4 py-3 rounded-xl text-sm resize-none"></textarea>
+                            <button class="btn-cyber btn-success-cyber px-6 py-3 rounded-xl text-sm font-medium" onclick="addMenuItem()">Add Menu Item</button>
                         </div>
                     </div>
-                    <div class="card">
-                        <div class="card-header"><h3 class="card-title">Menu Items</h3></div>
-                        <div id="menu-items-grid" class="menu-grid"></div>
+                    <div class="card-cyber p-6">
+                        <h3 class="text-lg font-semibold text-white tracking-tight mb-4">Menu Items</h3>
+                        <div id="menu-items-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
                     </div>
                 </section>
 
                 <!-- KITCHEN -->
                 <section id="kitchen-section" class="section">
-                    <div class="dept-tabs" id="dept-tabs"></div>
-                    <div id="kitchen-grid" class="kitchen-grid"></div>
+                    <div class="flex gap-2 mb-4 flex-wrap" id="dept-tabs"></div>
+                    <div id="kitchen-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
                 </section>
 
                 <!-- BILLS -->
                 <section id="bills-section" class="section">
-                    <div class="card">
-                        <div class="card-header"><h3 class="card-title">Bill History</h3></div>
+                    <div class="card-cyber p-6">
+                        <h3 class="text-lg font-semibold text-white tracking-tight mb-4">Bill History</h3>
                         <div id="bills-list"></div>
                     </div>
                 </section>
 
                 <!-- ANALYTICS -->
                 <section id="analytics-section" class="section">
-                    <div class="analytics-header">
-                        <h3 class="card-title" style="color:white;">📈 Financial Analytics</h3>
-                        <div class="analytics-filters">
-                            <select id="analytics-range" onchange="loadAnalytics()">
+                    <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                        <h3 class="text-lg font-semibold text-white tracking-tight">📈 Financial Analytics</h3>
+                        <div class="flex gap-2 items-center flex-wrap">
+                            <select id="analytics-range" onchange="loadAnalytics()" class="input-cyber px-3 py-2 rounded-xl text-sm">
                                 <option value="today">Today</option>
                                 <option value="week" selected>This Week</option>
                                 <option value="month">This Month</option>
@@ -376,87 +660,81 @@
                                 <option value="year">This Year</option>
                                 <option value="custom">Custom Range</option>
                             </select>
-                            <input type="date" id="analytics-start" style="display:none;">
-                            <input type="date" id="analytics-end" style="display:none;">
-                            <button class="btn btn-primary btn-sm" id="analytics-apply" style="display:none;" onclick="loadAnalytics()">Apply</button>
+                            <input type="date" id="analytics-start" class="input-cyber px-3 py-2 rounded-xl text-sm hidden">
+                            <input type="date" id="analytics-end" class="input-cyber px-3 py-2 rounded-xl text-sm hidden">
+                            <button id="analytics-apply" class="btn-cyber btn-primary-cyber px-4 py-2 rounded-xl text-sm font-medium hidden" onclick="loadAnalytics()">Apply</button>
                         </div>
                     </div>
 
-                    <!-- KPI Row -->
-                    <div class="kpi-row">
-                        <div class="kpi-card">
-                            <div class="kpi-value" id="kpi-total-sales">$0.00</div>
-                            <div class="kpi-label">Total Sales</div>
-                            <div class="kpi-change" id="kpi-sales-change">—</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                        <div class="analytics-kpi p-5">
+                            <div class="text-2xl font-bold text-neon font-mono neon-text-subtle" id="kpi-total-sales">$0.00</div>
+                            <div class="text-xs text-muted uppercase tracking-wider mt-1">Total Sales</div>
+                            <div class="text-xs mt-2" id="kpi-sales-change">—</div>
                         </div>
-                        <div class="kpi-card">
-                            <div class="kpi-value" id="kpi-bills">0</div>
-                            <div class="kpi-label">Bills Generated</div>
-                            <div class="kpi-change" id="kpi-bills-change">—</div>
+                        <div class="analytics-kpi p-5">
+                            <div class="text-2xl font-bold text-neon font-mono neon-text-subtle" id="kpi-bills">0</div>
+                            <div class="text-xs text-muted uppercase tracking-wider mt-1">Bills</div>
+                            <div class="text-xs mt-2" id="kpi-bills-change">—</div>
                         </div>
-                        <div class="kpi-card">
-                            <div class="kpi-value" id="kpi-avg-order">$0.00</div>
-                            <div class="kpi-label">Avg Order Value</div>
-                            <div class="kpi-change" id="kpi-avg-change">—</div>
+                        <div class="analytics-kpi p-5">
+                            <div class="text-2xl font-bold text-neon font-mono neon-text-subtle" id="kpi-avg-order">$0.00</div>
+                            <div class="text-xs text-muted uppercase tracking-wider mt-1">Avg Order</div>
+                            <div class="text-xs mt-2" id="kpi-avg-change">—</div>
                         </div>
-                        <div class="kpi-card">
-                            <div class="kpi-value" id="kpi-tables-served">0</div>
-                            <div class="kpi-label">Tables Served</div>
-                            <div class="kpi-change" id="kpi-tables-change">—</div>
+                        <div class="analytics-kpi p-5">
+                            <div class="text-2xl font-bold text-neon font-mono neon-text-subtle" id="kpi-tables-served">0</div>
+                            <div class="text-xs text-muted uppercase tracking-wider mt-1">Tables Served</div>
+                            <div class="text-xs mt-2" id="kpi-tables-change">—</div>
                         </div>
-                        <div class="kpi-card">
-                            <div class="kpi-value" id="kpi-total-items">0</div>
-                            <div class="kpi-label">Items Sold</div>
-                            <div class="kpi-change" id="kpi-items-change">—</div>
-                        </div>
-                    </div>
-
-                    <!-- Charts -->
-                    <div class="chart-grid">
-                        <div class="card">
-                            <div class="card-header"><h3 class="card-title">Revenue Trend</h3></div>
-                            <div class="chart-container"><canvas id="revenue-chart"></canvas></div>
-                        </div>
-                        <div class="card">
-                            <div class="card-header"><h3 class="card-title">Sales by Category</h3></div>
-                            <div class="chart-container"><canvas id="category-chart"></canvas></div>
+                        <div class="analytics-kpi p-5">
+                            <div class="text-2xl font-bold text-neon font-mono neon-text-subtle" id="kpi-total-items">0</div>
+                            <div class="text-xs text-muted uppercase tracking-wider mt-1">Items Sold</div>
+                            <div class="text-xs mt-2" id="kpi-items-change">—</div>
                         </div>
                     </div>
 
-                    <div class="chart-grid">
-                        <div class="card">
-                            <div class="card-header"><h3 class="card-title">Hourly Sales Pattern</h3></div>
-                            <div class="chart-container"><canvas id="hourly-chart"></canvas></div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <div class="card-cyber p-6">
+                            <h3 class="text-sm font-semibold text-white tracking-tight mb-4">Revenue Trend</h3>
+                            <div class="h-[300px]"><canvas id="revenue-chart"></canvas></div>
                         </div>
-                        <div class="card">
-                            <div class="card-header"><h3 class="card-title">Payment Status</h3></div>
-                            <div class="chart-container"><canvas id="payment-chart"></canvas></div>
+                        <div class="card-cyber p-6">
+                            <h3 class="text-sm font-semibold text-white tracking-tight mb-4">Sales by Category</h3>
+                            <div class="h-[300px]"><canvas id="category-chart"></canvas></div>
                         </div>
                     </div>
 
-                    <!-- Top Items & Tables -->
-                    <div class="top-items-grid">
-                        <div class="card">
-                            <div class="card-header"><h3 class="card-title">🏆 Top Selling Items</h3></div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <div class="card-cyber p-6">
+                            <h3 class="text-sm font-semibold text-white tracking-tight mb-4">Hourly Pattern</h3>
+                            <div class="h-[300px]"><canvas id="hourly-chart"></canvas></div>
+                        </div>
+                        <div class="card-cyber p-6">
+                            <h3 class="text-sm font-semibold text-white tracking-tight mb-4">Payment Status</h3>
+                            <div class="h-[300px]"><canvas id="payment-chart"></canvas></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <div class="card-cyber p-6">
+                            <h3 class="text-sm font-semibold text-white tracking-tight mb-4">🏆 Top Selling Items</h3>
                             <div id="top-items-list"></div>
                         </div>
-                        <div class="card">
-                            <div class="card-header"><h3 class="card-title">📋 Recent Bills</h3></div>
+                        <div class="card-cyber p-6">
+                            <h3 class="text-sm font-semibold text-white tracking-tight mb-4">📋 Recent Bills</h3>
                             <div id="analytics-bills-list"></div>
                         </div>
                     </div>
 
-                    <!-- Full Bill Table -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">📊 Bill Details</h3>
-                            <button class="btn btn-secondary btn-sm" onclick="exportAnalyticsCSV()">⬇️ Export CSV</button>
+                    <div class="card-cyber p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-sm font-semibold text-white tracking-tight">📊 Bill Details</h3>
+                            <button class="btn-cyber btn-secondary-cyber px-4 py-2 rounded-xl text-xs font-medium" onclick="exportAnalyticsCSV()">⬇️ Export CSV</button>
                         </div>
-                        <div style="overflow-x:auto;">
-                            <table class="data-table" id="analytics-table">
-                                <thead>
-                                    <tr><th>Date</th><th>Table</th><th>Items</th><th>Subtotal</th><th>Tax</th><th>Total</th><th>Status</th></tr>
-                                </thead>
+                        <div class="overflow-x-auto">
+                            <table class="data-table-cyber w-full">
+                                <thead><tr><th>Date</th><th>Table</th><th>Items</th><th>Subtotal</th><th>Tax</th><th>Total</th><th>Status</th></tr></thead>
                                 <tbody id="analytics-table-body"></tbody>
                             </table>
                         </div>
@@ -465,40 +743,40 @@
 
                 <!-- SETTINGS -->
                 <section id="settings-section" class="section">
-                    <div class="settings-grid">
-                        <div class="card">
-                            <div class="card-header"><h3 class="card-title">Departments</h3></div>
-                            <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
-                                <input type="text" id="new-dept-name" placeholder="Department name" style="flex:1;padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;">
-                                <button class="btn btn-success" onclick="addDepartment()">Add</button>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="card-cyber p-6">
+                            <h3 class="text-lg font-semibold text-white tracking-tight mb-4">Departments</h3>
+                            <div class="flex gap-2 mb-4">
+                                <input type="text" id="new-dept-name" placeholder="Department name" class="input-cyber flex-1 px-4 py-2.5 rounded-xl text-sm">
+                                <button class="btn-cyber btn-success-cyber px-4 py-2.5 rounded-xl text-sm font-medium" onclick="addDepartment()">Add</button>
                             </div>
                             <div id="departments-list"></div>
                         </div>
-                        <div class="card">
-                            <div class="card-header"><h3 class="card-title">Staff / Users</h3></div>
-                            <div id="staff-list" style="margin-bottom:1rem;"></div>
-                            <div style="border-top:1px solid var(--border);padding-top:1rem;">
-                                <h4 style="margin-bottom:0.75rem;font-size:1rem;">Add New Staff</h4>
-                                <div class="form-group">
-                                    <input type="text" id="staff-name" placeholder="Full name" style="width:100%;padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;margin-bottom:0.5rem;">
-                                    <input type="email" id="staff-email" placeholder="Email" style="width:100%;padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;margin-bottom:0.5rem;">
-                                    <select id="staff-role" style="width:100%;padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;margin-bottom:0.5rem;background:white;">
+                        <div class="card-cyber p-6">
+                            <h3 class="text-lg font-semibold text-white tracking-tight mb-4">Staff / Users</h3>
+                            <div id="staff-list" class="mb-4"></div>
+                            <div class="border-t border-white/5 pt-4">
+                                <h4 class="text-sm font-semibold text-white mb-3">Add New Staff</h4>
+                                <div class="space-y-3">
+                                    <input type="text" id="staff-name" placeholder="Full name" class="input-cyber w-full px-4 py-2.5 rounded-xl text-sm">
+                                    <input type="email" id="staff-email" placeholder="Email" class="input-cyber w-full px-4 py-2.5 rounded-xl text-sm">
+                                    <select id="staff-role" class="input-cyber w-full px-4 py-2.5 rounded-xl text-sm bg-transparent">
                                         <option value="staff">Staff</option>
                                         <option value="manager">Manager</option>
                                         <option value="admin">Admin</option>
                                     </select>
-                                    <select id="staff-dept" style="width:100%;padding:0.625rem;border:1px solid var(--border);border-radius:0.5rem;margin-bottom:0.5rem;background:white;"><option value="">No Department</option></select>
-                                    <div style="margin-bottom:0.5rem;"><strong>Permissions:</strong></div>
-                                    <div class="perm-grid" id="staff-perms">
-                                        <label class="perm-item"><input type="checkbox" value="dashboard" checked> Dashboard</label>
-                                        <label class="perm-item"><input type="checkbox" value="tables" checked> Tables</label>
-                                        <label class="perm-item"><input type="checkbox" value="menu" checked> Menu</label>
-                                        <label class="perm-item"><input type="checkbox" value="kitchen" checked> Kitchen</label>
-                                        <label class="perm-item"><input type="checkbox" value="bills" checked> Bills</label>
-                                        <label class="perm-item"><input type="checkbox" value="analytics" checked> Analytics</label>
-                                        <label class="perm-item"><input type="checkbox" value="settings" checked> Settings</label>
+                                    <select id="staff-dept" class="input-cyber w-full px-4 py-2.5 rounded-xl text-sm bg-transparent"><option value="">No Department</option></select>
+                                    <div class="text-sm text-muted-light mb-2">Permissions:</div>
+                                    <div class="grid grid-cols-2 gap-2" id="staff-perms">
+                                        <label class="flex items-center gap-2 text-sm text-muted-light"><input type="checkbox" value="dashboard" checked class="accent-neon"> Dashboard</label>
+                                        <label class="flex items-center gap-2 text-sm text-muted-light"><input type="checkbox" value="tables" checked class="accent-neon"> Tables</label>
+                                        <label class="flex items-center gap-2 text-sm text-muted-light"><input type="checkbox" value="menu" checked class="accent-neon"> Menu</label>
+                                        <label class="flex items-center gap-2 text-sm text-muted-light"><input type="checkbox" value="kitchen" checked class="accent-neon"> Kitchen</label>
+                                        <label class="flex items-center gap-2 text-sm text-muted-light"><input type="checkbox" value="bills" checked class="accent-neon"> Bills</label>
+                                        <label class="flex items-center gap-2 text-sm text-muted-light"><input type="checkbox" value="analytics" checked class="accent-neon"> Analytics</label>
+                                        <label class="flex items-center gap-2 text-sm text-muted-light"><input type="checkbox" value="settings" checked class="accent-neon"> Settings</label>
                                     </div>
-                                    <button class="btn btn-success" style="width:100%;margin-top:0.75rem;" onclick="addStaff()">Add Staff</button>
+                                    <button class="btn-cyber btn-success-cyber w-full py-3 rounded-xl text-sm font-medium mt-2" onclick="addStaff()">Add Staff</button>
                                 </div>
                             </div>
                         </div>
@@ -509,35 +787,42 @@
     </div>
 
     <!-- MODALS -->
-    <div id="detail-modal" class="modal-overlay" onclick="closeModal(event, 'detail-modal')">
-        <div class="modal" onclick="event.stopPropagation()">
-            <button class="modal-close" onclick="document.getElementById('detail-modal').classList.remove('active')">&times;</button>
-            <div class="modal-title" id="detail-title">Details</div>
+    <div id="detail-modal" class="modal-overlay-cyber fixed inset-0 z-50 hidden items-center justify-center p-4" onclick="closeModal(event, 'detail-modal')">
+        <div class="modal-cyber w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 relative" onclick="event.stopPropagation()">
+            <button class="absolute top-4 right-4 w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors" onclick="document.getElementById('detail-modal').classList.remove('active');document.getElementById('detail-modal').classList.add('hidden')">
+                <i data-lucide="x" class="w-4 h-4 text-muted-light"></i>
+            </button>
+            <div class="text-xl font-bold text-white mb-4 pr-8" id="detail-title">Details</div>
             <div id="detail-content"></div>
         </div>
     </div>
 
-    <div id="table-detail-modal" class="modal-overlay" onclick="closeModal(event, 'table-detail-modal')">
-        <div class="modal" onclick="event.stopPropagation()" style="max-width:700px;">
-            <button class="modal-close" onclick="document.getElementById('table-detail-modal').classList.remove('active')">&times;</button>
-            <div class="modal-title" id="table-detail-title">Table Details</div>
+    <div id="table-detail-modal" class="modal-overlay-cyber fixed inset-0 z-50 hidden items-center justify-center p-4" onclick="closeModal(event, 'table-detail-modal')">
+        <div class="modal-cyber w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 relative" onclick="event.stopPropagation()">
+            <button class="absolute top-4 right-4 w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors" onclick="document.getElementById('table-detail-modal').classList.remove('active');document.getElementById('table-detail-modal').classList.add('hidden')">
+                <i data-lucide="x" class="w-4 h-4 text-muted-light"></i>
+            </button>
+            <div class="text-xl font-bold text-white mb-4 pr-8" id="table-detail-title">Table Details</div>
             <div id="table-detail-content"></div>
         </div>
     </div>
 
-    <div id="qr-modal" class="modal-overlay" onclick="closeModal(event, 'qr-modal')">
-        <div class="modal" onclick="event.stopPropagation()">
-            <button class="modal-close" onclick="document.getElementById('qr-modal').classList.remove('active')">&times;</button>
-            <div class="modal-title">Table QR Code</div>
-            <div style="text-align:center;">
-                <div id="qr-container" style="display:inline-block;padding:1rem;background:white;"></div>
-                <div id="qr-info" style="margin-top:1rem;color:var(--gray);font-size:0.875rem;"></div>
-                <button class="btn btn-primary" style="margin-top:1rem;" onclick="printQR()">🖨️ Print QR Code</button>
-            </div>
+    <div id="qr-modal" class="modal-overlay-cyber fixed inset-0 z-50 hidden items-center justify-center p-4" onclick="closeModal(event, 'qr-modal')">
+        <div class="modal-cyber w-full max-w-md p-6 relative text-center" onclick="event.stopPropagation()">
+            <button class="absolute top-4 right-4 w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors" onclick="document.getElementById('qr-modal').classList.remove('active');document.getElementById('qr-modal').classList.add('hidden')">
+                <i data-lucide="x" class="w-4 h-4 text-muted-light"></i>
+            </button>
+            <div class="text-xl font-bold text-white mb-6">Table QR Code</div>
+            <div id="qr-container" class="inline-block p-4 bg-white rounded-2xl"></div>
+            <div id="qr-info" class="mt-4 text-sm text-muted"></div>
+            <button class="btn-cyber btn-primary-cyber px-6 py-3 rounded-xl text-sm font-medium mt-4" onclick="printQR()">
+                <i data-lucide="printer" class="w-4 h-4 inline mr-2"></i>Print QR
+            </button>
         </div>
     </div>
 
     <script>
+<script>
 
         // ===================== CONFIG =====================
         const CONFIG = {
@@ -554,6 +839,7 @@
         const sectionTitles = { dashboard: 'Dashboard', tables: 'Tables', menu: 'Menu', kitchen: 'Kitchen', bills: 'Bills', analytics: 'Analytics', settings: 'Settings' };
 
         document.addEventListener('DOMContentLoaded', async () => {
+            lucide.createIcons();
             const { data: { session } } = await sb.auth.getSession();
             if (session) { currentUser = session.user; await initUser(); }
             else showLogin();
@@ -589,8 +875,8 @@
             });
         }
 
-        function showLogin() { document.getElementById('login-section').style.display = 'flex'; document.getElementById('app-section').style.display = 'none'; }
-        function showApp() { document.getElementById('login-section').style.display = 'none'; document.getElementById('app-section').style.display = 'flex'; showSection('dashboard'); }
+        function showLogin() { document.getElementById('login-section').classList.remove('hidden'); document.getElementById('app-section').classList.add('hidden'); document.getElementById('app-section').classList.remove('flex'); }
+        function showApp() { document.getElementById('login-section').classList.add('hidden'); document.getElementById('app-section').classList.remove('hidden'); document.getElementById('app-section').classList.add('flex'); showSection('dashboard'); }
 
         async function handleLogin() {
             const email = document.getElementById('login-email').value.trim();
@@ -619,10 +905,7 @@
             document.getElementById('page-title').textContent = sectionTitles[sectionId] || sectionId;
             document.getElementById('sidebar').classList.remove('open');
 
-            // Toggle analytics dark mode
-            const mainContent = document.getElementById('main-content');
-            if (sectionId === 'analytics') mainContent.classList.add('analytics-page');
-            else mainContent.classList.remove('analytics-page');
+// Analytics styling handled by global theme
 
             // Clear dashboard timer when leaving dashboard
             if (sectionId !== 'dashboard' && dashboardTimerInterval) {
@@ -630,17 +913,17 @@
                 dashboardTimerInterval = null;
             }
 
-            if (sectionId === 'dashboard') loadDashboard();
-            if (sectionId === 'tables') loadTables();
-            if (sectionId === 'menu') loadMenuManager();
-            if (sectionId === 'kitchen') { loadKitchen(); subscribeToOrders(); }
-            if (sectionId === 'bills') loadBills();
-            if (sectionId === 'analytics') loadAnalytics();
-            if (sectionId === 'settings') loadSettings();
+            if (sectionId === 'dashboard') { loadDashboard(); setTimeout(() => lucide.createIcons(), 100); }
+            if (sectionId === 'tables') { loadTables(); setTimeout(() => lucide.createIcons(), 100); }
+            if (sectionId === 'menu') { loadMenuManager(); setTimeout(() => lucide.createIcons(), 100); }
+            if (sectionId === 'kitchen') { loadKitchen(); subscribeToOrders(); setTimeout(() => lucide.createIcons(), 100); }
+            if (sectionId === 'bills') { loadBills(); setTimeout(() => lucide.createIcons(), 100); }
+            if (sectionId === 'analytics') { loadAnalytics(); setTimeout(() => lucide.createIcons(), 100); }
+            if (sectionId === 'settings') { loadSettings(); setTimeout(() => lucide.createIcons(), 100); }
         }
 
         function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
-        function closeModal(event, modalId) { if (event.target === document.getElementById(modalId)) document.getElementById(modalId).classList.remove('active'); }
+        function closeModal(event, modalId) { if (event.target === document.getElementById(modalId)) { document.getElementById(modalId).classList.add('hidden'); document.getElementById(modalId).classList.remove('flex'); } }
 
         // ===================== DASHBOARD =====================
         async function loadDashboard() {
@@ -746,7 +1029,7 @@
 
             if (type === 'occupied') {
                 title.textContent = `Occupied Tables (${data.occupiedTables.length})`;
-                if (data.occupiedTables.length === 0) { content.innerHTML = '<div class="empty-state">No occupied tables</div>'; }
+                if (data.occupiedTables.length === 0) { content.innerHTML = '<div class="empty-state-cyber"><i data-lucide="layout-grid" class="w-10 h-10 mx-auto mb-3 text-muted/30"></i><p>No occupied tables</p></div>'; }
                 else {
                     data.occupiedTables.forEach(t => {
                         const elapsed = t.occupied_at ? formatElapsedLive(new Date(t.occupied_at)) : 'N/A';
@@ -755,7 +1038,7 @@
                 }
             } else if (type === 'pending') {
                 title.textContent = `Pending Orders (${data.pendingTables.length})`;
-                if (data.pendingTables.length === 0) { content.innerHTML = '<div class="empty-state">All occupied tables have ordered!</div>'; }
+                if (data.pendingTables.length === 0) { content.innerHTML = '<div class="empty-state-cyber"><i data-lucide="check-circle" class="w-10 h-10 mx-auto mb-3 text-neon/30"></i><p>All occupied tables have ordered!</p></div>'; }
                 else {
                     data.pendingTables.forEach(t => {
                         const elapsed = t.occupied_at ? formatElapsedLive(new Date(t.occupied_at)) : 'N/A';
@@ -764,7 +1047,7 @@
                 }
             } else if (type === 'preparing') {
                 title.textContent = `Preparing (${data.preparingOrders.length} orders)`;
-                if (data.preparingOrders.length === 0) { content.innerHTML = '<div class="empty-state">Nothing being prepared</div>'; }
+                if (data.preparingOrders.length === 0) { content.innerHTML = '<div class="empty-state-cyber"><i data-lucide="chef-hat" class="w-10 h-10 mx-auto mb-3 text-muted/30"></i><p>Nothing being prepared</p></div>'; }
                 else {
                     const byTable = {};
                     data.preparingOrders.forEach(o => {
@@ -788,7 +1071,7 @@
                     }
                     return false;
                 }) || [];
-                if (!todayTables.length) { content.innerHTML = '<div class="empty-state">No tables occupied today yet</div>'; }
+                if (!todayTables.length) { content.innerHTML = '<div class="empty-state-cyber"><i data-lucide="calendar" class="w-10 h-10 mx-auto mb-3 text-muted/30"></i><p>No tables occupied today yet</p></div>'; }
                 else {
                     todayTables.forEach(t => {
                         const time = t.occupied_at ? new Date(t.occupied_at).toLocaleTimeString() : 'Currently occupied';
@@ -799,7 +1082,7 @@
                 title.textContent = `Tables Occupied This Month (${data.occupiedMonth})`;
                 content.innerHTML = '<div class="empty-state">View detailed analytics in the Analytics page</div>';
             }
-            modal.classList.add('active');
+            modal.classList.remove('hidden'); modal.classList.add('flex'); setTimeout(() => lucide.createIcons(), 50); setTimeout(() => lucide.createIcons(), 50);
         }
 
         // ===================== TABLES =====================
@@ -808,7 +1091,7 @@
                 const { data: tables, error } = await sb.from('restaurant_tables').select('*, orders(*, order_items(*, menu_items(name)))').order('table_number');
                 if (error) throw error;
                 const grid = document.getElementById('tables-grid'); grid.innerHTML = '';
-                if (!tables?.length) { grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">🪑</div><p>No tables yet.</p></div>'; return; }
+                if (!tables?.length) { grid.innerHTML = '<div class="empty-state-cyber col-span-full"><i data-lucide="layout-grid" class="w-12 h-12 mx-auto mb-3 text-muted/30"></i><p>No tables yet</p></div>'; return; }
 
                 tables.forEach(table => {
                     const card = document.createElement('div');
@@ -822,7 +1105,7 @@
                     const activeOrders = table.orders?.filter(o => !['served','cancelled'].includes(o.status)) || [];
                     let ordersHtml = '';
                     if (activeOrders.length > 0) {
-                        ordersHtml = '<div class="table-orders"><strong>Current Orders:</strong>';
+                        ordersHtml = '<div class="mt-3 pt-3 border-t border-white/5 text-sm"><div class="text-xs text-muted uppercase tracking-wider mb-2">Current Orders</div>';
                         activeOrders.forEach(o => {
                             o.order_items?.forEach(oi => {
                                 ordersHtml += `<div class="table-order-item"><span>${oi.quantity}× ${oi.item_name || oi.menu_items?.name}</span><span>$${(oi.quantity * oi.price_at_time).toFixed(2)}</span></div>`;
@@ -868,8 +1151,8 @@
 
                 // Table info header
                 const occupiedTime = table.occupied_at ? new Date(table.occupied_at).toLocaleString() : 'N/A';
-                html += `<div style="background:#f8fafc;border-radius:0.5rem;padding:1rem;margin-bottom:1rem;">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;font-size:0.875rem;">
+                html += `<div class="bg-white/5 rounded-xl p-4 mb-4 border border-white/5">
+                    <div class="grid grid-cols-2 gap-4 text-sm">
                         <div><strong>Status:</strong> <span style="text-transform:uppercase;font-weight:600;color:${table.status === 'occupied' ? 'var(--success)' : 'var(--gray)'}">${table.status}</span></div>
                         <div><strong>Occupied At:</strong> ${occupiedTime}</div>
                     </div>
@@ -879,16 +1162,16 @@
                 if (!orders?.length) {
                     html += '<div class="empty-state">No orders placed yet</div>';
                 } else {
-                    html += '<div style="max-height:400px;overflow-y:auto;">';
+                    html += '<div class="max-h-[400px] overflow-y-auto pr-2">';
                     orders.forEach((order, idx) => {
                         const orderTime = new Date(order.created_at).toLocaleString();
                         const statusColor = order.status === 'pending' ? 'var(--warning)' : order.status === 'preparing' ? 'var(--primary)' : order.status === 'ready' ? 'var(--success)' : 'var(--gray)';
-                        html += `<div style="border:1px solid var(--border);border-radius:0.5rem;margin-bottom:0.75rem;overflow:hidden;">
-                            <div style="background:#f1f5f9;padding:0.75rem 1rem;display:flex;justify-content:space-between;align-items:center;">
+                        html += `<div class="border border-white/5 rounded-xl mb-3 overflow-hidden">
+                            <div class="bg-white/5 px-4 py-3 flex justify-between items-center">
                                 <div><strong>Order #${orders.length - idx}</strong> <span style="font-size:0.75rem;color:var(--gray);">• ${orderTime}</span></div>
                                 <span style="text-transform:uppercase;font-size:0.75rem;font-weight:600;color:${statusColor}">${order.status}</span>
                             </div>
-                            <div style="padding:0.75rem 1rem;">`;
+                            <div class="px-4 py-3">`;
 
                         if (order.order_items?.length) {
                             order.order_items.forEach(oi => {
@@ -905,7 +1188,7 @@
                                 <span>$${parseFloat(order.total_amount).toFixed(2)}</span>
                             </div>`;
                         } else {
-                            html += '<div style="color:var(--gray);font-size:0.875rem;">No items in this order</div>';
+                            html += '<div class="text-muted text-sm">No items in this order</div>';
                         }
                         html += `</div></div>`;
                     });
@@ -913,7 +1196,7 @@
                 }
 
                 content.innerHTML = html;
-                modal.classList.add('active');
+                modal.classList.remove('hidden'); modal.classList.add('flex'); setTimeout(() => lucide.createIcons(), 50); setTimeout(() => lucide.createIcons(), 50);
             } catch (e) { console.error('Table detail error:', e); alert('Error loading table details: ' + e.message); }
         }
 
@@ -956,7 +1239,7 @@
             currentQR = { url, tableNum: tableNumber };
             new QRCode(container, { text: url, width: 240, height: 240, colorDark: '#1e293b', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
             info.innerHTML = `<strong>Table ${tableNumber}</strong><br><span style="font-size:0.75rem;word-break:break-all;">${url}</span>`;
-            modal.classList.add('active');
+            modal.classList.remove('hidden'); modal.classList.add('flex'); setTimeout(() => lucide.createIcons(), 50); setTimeout(() => lucide.createIcons(), 50);
         }
 
         function printQR() {
@@ -1011,9 +1294,9 @@
             const { data, error } = await sb.from('menu_items').select('*, categories(name), departments(name)').order('name');
             if (error) return;
             const grid = document.getElementById('menu-items-grid'); grid.innerHTML = '';
-            if (!data?.length) { grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">🍽️</div><p>No items.</p></div>'; return; }
+            if (!data?.length) { grid.innerHTML = '<div class="empty-state-cyber col-span-full"><i data-lucide="utensils" class="w-12 h-12 mx-auto mb-3 text-muted/30"></i><p>No items</p></div>'; return; }
             data.forEach(item => {
-                const div = document.createElement('div'); div.className = 'menu-item-card';
+                const div = document.createElement('div'); div.className = 'menu-item-card-cyber';
                 div.innerHTML = `
                     <div class="menu-item-image">${item.image_url ? `<img src="${item.image_url}" alt="${item.name}" onerror="this.parentElement.innerHTML='🍽️'">` : '🍽️'}</div>
                     <div class="menu-item-info">
@@ -1097,7 +1380,7 @@
                 let filtered = items || [];
                 if (currentDept !== 'all') filtered = filtered.filter(i => i.department_id === currentDept);
 
-                if (!filtered.length) { grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">👨‍🍳</div><p>No active items.</p></div>'; return; }
+                if (!filtered.length) { grid.innerHTML = '<div class="empty-state-cyber col-span-full"><i data-lucide="flame" class="w-12 h-12 mx-auto mb-3 text-muted/30"></i><p>No active items</p></div>'; return; }
 
                 const grouped = {};
                 filtered.forEach(item => {
@@ -1149,10 +1432,10 @@
                 const { data: bills, error } = await sb.from('bills').select('*').order('created_at', { ascending: false }).limit(50);
                 if (error) throw error;
                 const list = document.getElementById('bills-list'); list.innerHTML = '';
-                if (!bills?.length) { list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🧾</div><p>No bills.</p></div>'; return; }
+                if (!bills?.length) { list.innerHTML = '<div class="empty-state-cyber"><i data-lucide="receipt" class="w-12 h-12 mx-auto mb-3 text-muted/30"></i><p>No bills</p></div>'; return; }
                 bills.forEach(bill => {
                     const time = new Date(bill.created_at).toLocaleString();
-                    const div = document.createElement('div'); div.className = 'bill-card';
+                    const div = document.createElement('div'); div.className = 'bill-card-cyber p-5 mb-4';
                     div.innerHTML = `
                         <div class="bill-header">
                             <div><span class="bill-table">Table ${bill.table_number || '?'}</span><span style="color:var(--gray);font-size:0.875rem;margin-left:0.5rem;">• ${time}</span></div>
@@ -1191,7 +1474,7 @@
             await loadDepartments();
             const { data: depts } = await sb.from('departments').select('*').order('sort_order');
             const list = document.getElementById('departments-list'); list.innerHTML = '';
-            if (!depts?.length) { list.innerHTML = '<div class="empty-state">No departments</div>'; }
+            if (!depts?.length) { list.innerHTML = '<div class="empty-state-cyber"><p>No departments</p></div>'; }
             else {
                 depts.forEach(d => {
                     list.innerHTML += `<div class="list-item"><div class="list-item-info"><div class="list-item-title">${d.name}</div></div><button class="btn btn-danger btn-sm" onclick="deleteDepartment('${d.id}')">Delete</button></div>`;
@@ -1211,7 +1494,7 @@
         async function loadStaff() {
             const { data: staff } = await sb.from('staff').select('*, departments(name)').order('created_at');
             const list = document.getElementById('staff-list'); list.innerHTML = '';
-            if (!staff?.length) { list.innerHTML = '<div class="empty-state">No staff added yet</div>'; return; }
+            if (!staff?.length) { list.innerHTML = '<div class="empty-state-cyber"><p>No staff added yet</p></div>'; return; }
             staff.forEach(s => {
                 const perms = s.permissions?.join(', ') || 'None';
                 list.innerHTML += `<div class="list-item"><div class="list-item-info"><div class="list-item-title">${s.name} (${s.role})</div><div class="list-item-sub">${s.email} • ${s.departments?.name || 'No Dept'} • ${perms}</div></div><button class="btn btn-danger btn-sm" onclick="deleteStaff('${s.id}')">Remove</button></div>`;
@@ -1391,33 +1674,33 @@
                 if (!prev || prev === 0) return { text: '—', cls: '' };
                 const pct = ((curr - prev) / prev * 100).toFixed(1);
                 const isUp = curr >= prev;
-                return { text: `${isUp ? '▲' : '▼'} ${Math.abs(pct)}% vs prev period`, cls: isUp ? 'up' : 'down' };
+                return { text: `${isUp ? '▲' : '▼'} ${Math.abs(pct)}% vs prev`, cls: isUp ? 'text-neon' : 'text-danger' };
             };
 
             document.getElementById('kpi-total-sales').textContent = `$${current.totalSales.toFixed(2)}`;
             const salesChg = formatChange(current.totalSales, prev.totalSales);
             document.getElementById('kpi-sales-change').textContent = salesChg.text;
-            document.getElementById('kpi-sales-change').className = 'kpi-change ' + salesChg.cls;
+            document.getElementById('kpi-sales-change').className = 'text-xs mt-2 ' + salesChg.cls;
 
             document.getElementById('kpi-bills').textContent = current.totalBills;
             const billsChg = formatChange(current.totalBills, prev.totalBills);
             document.getElementById('kpi-bills-change').textContent = billsChg.text;
-            document.getElementById('kpi-bills-change').className = 'kpi-change ' + billsChg.cls;
+            document.getElementById('kpi-bills-change').className = 'text-xs mt-2 ' + billsChg.cls;
 
             document.getElementById('kpi-avg-order').textContent = `$${current.avgOrder.toFixed(2)}`;
             const avgChg = formatChange(current.avgOrder, prev.avgOrder);
             document.getElementById('kpi-avg-change').textContent = avgChg.text;
-            document.getElementById('kpi-avg-change').className = 'kpi-change ' + avgChg.cls;
+            document.getElementById('kpi-avg-change').className = 'text-xs mt-2 ' + avgChg.cls;
 
             document.getElementById('kpi-tables-served').textContent = current.tablesServed;
             const tablesChg = formatChange(current.tablesServed, prev.tablesServed);
             document.getElementById('kpi-tables-change').textContent = tablesChg.text;
-            document.getElementById('kpi-tables-change').className = 'kpi-change ' + tablesChg.cls;
+            document.getElementById('kpi-tables-change').className = 'text-xs mt-2 ' + tablesChg.cls;
 
             document.getElementById('kpi-total-items').textContent = current.totalItems;
             const itemsChg = formatChange(current.totalItems, prev.totalItems);
             document.getElementById('kpi-items-change').textContent = itemsChg.text;
-            document.getElementById('kpi-items-change').className = 'kpi-change ' + itemsChg.cls;
+            document.getElementById('kpi-items-change').className = 'text-xs mt-2 ' + itemsChg.cls;
         }
 
         function renderCharts(data, range) {
@@ -1440,20 +1723,20 @@
                     datasets: [{
                         label: 'Revenue ($)',
                         data: values,
-                        borderColor: '#38bdf8',
-                        backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                        borderColor: '#00ff88',
+                        backgroundColor: 'rgba(0, 255, 136, 0.08)',
                         fill: true,
                         tension: 0.4,
                         pointRadius: 4,
-                        pointBackgroundColor: '#38bdf8'
+                        pointBackgroundColor: '#00ff88'
                     }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8', callback: v => '$' + v.toFixed(0) } },
-                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#6b7280', callback: v => '$' + v.toFixed(0) } },
+                        x: { grid: { display: false }, ticks: { color: '#6b7280' } }
                     }
                 }
             });
@@ -1461,7 +1744,7 @@
             // Category Sales (doughnut)
             const catLabels = Object.keys(data.categorySales);
             const catValues = Object.values(data.categorySales);
-            const colors = ['#38bdf8', '#4ade80', '#fbbf24', '#f87171', '#a78bfa', '#fb923c'];
+            const colors = ['#00ff88', '#0ea5e9', '#f59e0b', '#ef4444', '#a78bfa', '#fb923c'];
 
             analyticsCharts.category = new Chart(document.getElementById('category-chart'), {
                 type: 'doughnut',
@@ -1477,7 +1760,7 @@
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'right', labels: { color: '#e2e8f0', font: { size: 11 } } }
+                        legend: { position: 'right', labels: { color: '#9ca3af', font: { size: 11 } } }
                     }
                 }
             });
@@ -1491,7 +1774,7 @@
                     datasets: [{
                         label: 'Sales ($)',
                         data: data.hourlySales,
-                        backgroundColor: '#818cf8',
+                        backgroundColor: '#0ea5e9',
                         borderRadius: 4
                     }]
                 },
@@ -1499,8 +1782,8 @@
                     responsive: true, maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8', callback: v => '$' + v.toFixed(0) } },
-                        x: { grid: { display: false }, ticks: { color: '#94a3b8', maxTicksLimit: 12 } }
+                        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#6b7280', callback: v => '$' + v.toFixed(0) } },
+                        x: { grid: { display: false }, ticks: { color: '#6b7280', maxTicksLimit: 12 } }
                     }
                 }
             });
@@ -1512,7 +1795,7 @@
                     labels: ['Paid', 'Unpaid'],
                     datasets: [{
                         data: [data.paidBills, data.unpaidBills],
-                        backgroundColor: ['#4ade80', '#fbbf24'],
+                        backgroundColor: ['#00ff88', '#f59e0b'],
                         borderColor: '#1e293b',
                         borderWidth: 2
                     }]
@@ -1520,7 +1803,7 @@
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'right', labels: { color: '#e2e8f0', font: { size: 12 } } }
+                        legend: { position: 'right', labels: { color: '#9ca3af', font: { size: 12 } } }
                     }
                 }
             });
@@ -1532,7 +1815,7 @@
                 .slice(0, 10);
 
             const container = document.getElementById('top-items-list');
-            if (!sorted.length) { container.innerHTML = '<div class="empty-state">No sales data yet</div>'; return; }
+            if (!sorted.length) { container.innerHTML = '<div class="empty-state-cyber"><p>No sales data yet</p></div>'; return; }
 
             const maxRevenue = sorted[0][1].revenue;
             let html = '';
@@ -1552,7 +1835,7 @@
 
         function renderAnalyticsBills(bills) {
             const container = document.getElementById('analytics-bills-list');
-            if (!bills.length) { container.innerHTML = '<div class="empty-state">No bills in this period</div>'; return; }
+            if (!bills.length) { container.innerHTML = '<div class="empty-state-cyber"><p>No bills in this period</p></div>'; return; }
 
             const recent = bills.slice(0, 5);
             let html = '';
@@ -1572,7 +1855,7 @@
 
         function renderAnalyticsTable(bills) {
             const tbody = document.getElementById('analytics-table-body');
-            if (!bills.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No bills in this period</td></tr>'; return; }
+            if (!bills.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-muted">No bills in this period</td></tr>'; return; }
 
             let html = '';
             bills.forEach(b => {
