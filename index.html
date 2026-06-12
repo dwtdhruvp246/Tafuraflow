@@ -30,7 +30,7 @@
             --radius-sm: 10px;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; overflow-x: hidden; }
+        body { font-family: "Inter", sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; overflow-x: hidden; }
         .hidden { display: none !important; }
         .flex { display: flex; }
         .items-center { align-items: center; }
@@ -87,7 +87,7 @@
             position: relative; overflow: hidden;
         }
         #login-view::before {
-            content: ''; position: absolute; width: 600px; height: 600px;
+            content: ""; position: absolute; width: 600px; height: 600px;
             background: radial-gradient(circle, rgba(249,115,22,0.15) 0%, transparent 70%);
             top: -200px; right: -200px; border-radius: 50%;
         }
@@ -173,10 +173,7 @@
         .order-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
         .order-time { color: var(--text-secondary); font-size: 13px; }
         .order-items { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-        .order-item-tag {
-            background: var(--bg); padding: 4px 10px; border-radius: 6px; font-size: 13px;
-            border: 1px solid var(--border);
-        }
+        .order-item-tag { background: var(--bg); padding: 4px 10px; border-radius: 6px; font-size: 13px; border: 1px solid var(--border); }
         .order-total { font-size: 18px; font-weight: 800; color: var(--primary); }
         #kitchen-view { min-height: 100vh; background: var(--dark); padding: 24px; }
         .kitchen-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; color: white; }
@@ -185,10 +182,7 @@
             background: var(--surface); border-radius: var(--radius); padding: 24px;
             border-left: 5px solid var(--primary); animation: slideIn 0.4s ease;
         }
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .kitchen-table { font-size: 28px; font-weight: 800; margin-bottom: 4px; }
         .kitchen-time { color: var(--text-secondary); font-size: 13px; margin-bottom: 16px; }
         .kitchen-items { margin-bottom: 16px; }
@@ -285,15 +279,11 @@
         .toast {
             background: var(--dark); color: white; padding: 14px 20px; border-radius: 10px;
             box-shadow: var(--shadow-lg); display: flex; align-items: center; gap: 10px;
-            font-size: 14px; font-weight: 500; animation: toastIn 0.3s ease;
-            min-width: 280px;
+            font-size: 14px; font-weight: 500; animation: toastIn 0.3s ease; min-width: 280px;
         }
         .toast.success { background: var(--success); }
         .toast.error { background: var(--danger); }
-        @keyframes toastIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
+        @keyframes toastIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         .empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
         .empty-state i { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
         .empty-state h3 { font-size: 18px; margin-bottom: 8px; color: var(--text); }
@@ -314,6 +304,7 @@
         }
         .spinner { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        .opacity-50 { opacity: 0.5; }
     </style>
 <base target="_blank">
 </head>
@@ -576,8 +567,8 @@
 
     <script>
         // ==================== CONFIG ====================
-        const SUPABASE_URL = 'https://yalfwsqfnzunecnmxajq.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhbGZ3c3Fmbnp1bmVjbm14YWpxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNjYwNjUsImV4cCI6MjA5Njg0MjA2NX0.277WcudAYbzA5sG4UpFc9ta8_IVDyn0zxnS85Q35Urc';
+        const SUPABASE_URL = "https://yalfwsqfnzunecnmxajq.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhbGZ3c3Fmbnp1bmVjbm14YWpxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNjYwNjUsImV4cCI6MjA5Njg0MjA2NX0.277WcudAYbzA5sG4UpFc9ta8_IVDyn0zxnS85Q35Urc";
         const supabase = supabaseClient.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // ==================== STATE ====================
@@ -588,420 +579,529 @@
             orders: [],
             sessions: [],
             cart: [],
-            currentTab: 'tables',
+            currentTab: "tables",
             kitchenSound: true,
             currentSession: null,
             currentTable: null,
             customerSession: null,
             customerTable: null,
-            photoType: 'url',
+            photoType: "url",
             subscriptions: []
         };
 
         // ==================== INIT ====================
-        document.addEventListener('DOMContentLoaded', async () => {
+        document.addEventListener("DOMContentLoaded", async function() {
+            // Check URL params for customer view
             const params = new URLSearchParams(window.location.search);
-            const view = params.get('view');
-            const tableId = params.get('table_id');
-            const sessionId = params.get('session_id');
+            const view = params.get("view");
+            const tableId = params.get("table_id");
+            const sessionId = params.get("session_id");
 
-            if (view === 'customer' && tableId && sessionId) {
+            if (view === "customer" && tableId && sessionId) {
                 await initCustomerView(tableId, sessionId);
                 return;
             }
 
+            // Check auth
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
                 state.user = session.user;
-                showView('admin');
+                showView("admin");
                 initAdmin();
             } else {
-                showView('login');
+                showView("login");
             }
 
-            document.getElementById('login-form').addEventListener('submit', handleLogin);
-            document.getElementById('add-table-form').addEventListener('submit', handleAddTable);
-            document.getElementById('add-menu-form').addEventListener('submit', handleSaveMenuItem);
-            document.getElementById('show-setup').addEventListener('click', (e) => {
+            // Setup form listeners
+            document.getElementById("login-form").addEventListener("submit", handleLogin);
+            document.getElementById("add-table-form").addEventListener("submit", handleAddTable);
+            document.getElementById("add-menu-form").addEventListener("submit", handleSaveMenuItem);
+            document.getElementById("show-setup").addEventListener("click", function(e) {
                 e.preventDefault();
                 handleSetup();
             });
 
-            document.querySelectorAll('.nav-item[data-tab]').forEach(item => {
-                item.addEventListener('click', () => switchTab(item.dataset.tab));
+            // Nav items
+            document.querySelectorAll(".nav-item[data-tab]").forEach(function(item) {
+                item.addEventListener("click", function() {
+                    switchTab(item.dataset.tab);
+                });
+            });
+
+            // Event delegation for dynamic elements
+            setupEventDelegation();
+
+            // Close modal on overlay click
+            document.querySelectorAll(".modal-overlay").forEach(function(overlay) {
+                overlay.addEventListener("click", function(e) {
+                    if (e.target === overlay) overlay.classList.remove("open");
+                });
             });
         });
+
+        function setupEventDelegation() {
+            // Tables container
+            const tablesContainer = document.getElementById("tables-container");
+            if (tablesContainer) {
+                tablesContainer.addEventListener("click", function(e) {
+                    const btn = e.target.closest("[data-action]");
+                    if (!btn) return;
+                    const action = btn.dataset.action;
+                    const id = btn.dataset.id;
+                    if (action === "openTable") openTable(id);
+                    if (action === "showQR") showQR(id);
+                    if (action === "showBill") showBill(id);
+                    if (action === "closeTable") closeTable(id);
+                    if (action === "deleteTable") deleteTable(id);
+                });
+            }
+
+            // Menu container
+            const menuContainer = document.getElementById("menu-container");
+            if (menuContainer) {
+                menuContainer.addEventListener("click", function(e) {
+                    const btn = e.target.closest("[data-action]");
+                    if (!btn) return;
+                    const action = btn.dataset.action;
+                    const id = btn.dataset.id;
+                    if (action === "editMenuItem") editMenuItem(id);
+                    if (action === "deleteMenuItem") deleteMenuItem(id);
+                });
+            }
+
+            // Customer menu
+            const customerMenu = document.getElementById("customer-menu");
+            if (customerMenu) {
+                customerMenu.addEventListener("click", function(e) {
+                    const btn = e.target.closest("[data-action]");
+                    if (!btn) return;
+                    const action = btn.dataset.action;
+                    const id = btn.dataset.id;
+                    if (action === "addToCart") addToCart(id);
+                });
+            }
+
+            // Kitchen container
+            const kitchenContainer = document.getElementById("kitchen-container");
+            if (kitchenContainer) {
+                kitchenContainer.addEventListener("click", function(e) {
+                    const btn = e.target.closest("[data-action]");
+                    if (!btn) return;
+                    const action = btn.dataset.action;
+                    const id = btn.dataset.id;
+                    if (action === "markOrderDone") markOrderDone(id);
+                });
+            }
+
+            // Cart items
+            const cartItems = document.getElementById("cart-items");
+            if (cartItems) {
+                cartItems.addEventListener("click", function(e) {
+                    const btn = e.target.closest("[data-action]");
+                    if (!btn) return;
+                    const action = btn.dataset.action;
+                    const id = btn.dataset.id;
+                    const delta = parseInt(btn.dataset.delta);
+                    if (action === "updateCartQty") updateCartQty(id, delta);
+                });
+            }
+
+            // Category tabs
+            const categoryTabs = document.getElementById("category-tabs");
+            if (categoryTabs) {
+                categoryTabs.addEventListener("click", function(e) {
+                    const btn = e.target.closest("[data-action]");
+                    if (!btn) return;
+                    const action = btn.dataset.action;
+                    const cat = btn.dataset.category;
+                    if (action === "filterCategory") filterCategory(cat, btn);
+                });
+            }
+        }
 
         // ==================== AUTH ====================
         async function handleLogin(e) {
             e.preventDefault();
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-            const btn = e.target.querySelector('button[type="submit"]');
+            const email = document.getElementById("login-email").value;
+            const password = document.getElementById("login-password").value;
+            const btn = e.target.querySelector("button[type=submit]");
             const originalText = btn.innerHTML;
-            btn.innerHTML = '<div class="spinner"></div>';
+            btn.innerHTML = "<div class=spinner></div>";
             btn.disabled = true;
 
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            const { data, error } = await supabase.auth.signInWithPassword({ email: email, password: password });
             if (error) {
-                showToast(error.message, 'error');
+                showToast(error.message, "error");
                 btn.innerHTML = originalText;
                 btn.disabled = false;
                 return;
             }
             state.user = data.user;
-            showView('admin');
+            showView("admin");
             initAdmin();
         }
 
         async function handleSetup() {
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
+            const email = document.getElementById("login-email").value;
+            const password = document.getElementById("login-password").value;
             if (!email || !password) {
-                showToast('Enter email and password first', 'error');
+                showToast("Enter email and password first", "error");
                 return;
             }
-            const { error } = await supabase.auth.signUp({ email, password });
+            const { error } = await supabase.auth.signUp({ email: email, password: password });
             if (error) {
-                showToast(error.message, 'error');
+                showToast(error.message, "error");
                 return;
             }
-            showToast('Account created! Check email to confirm, then login.', 'success');
+            showToast("Account created! Check email to confirm, then login.", "success");
         }
 
         async function logout() {
             await supabase.auth.signOut();
             state.user = null;
-            showView('login');
+            showView("login");
         }
 
         // ==================== VIEW ROUTER ====================
         function showView(view) {
-            document.querySelectorAll('#login-view, #admin-view, #kitchen-view, #customer-view').forEach(el => el.classList.add('hidden'));
-            document.getElementById(view + '-view').classList.remove('hidden');
+            document.querySelectorAll("#login-view, #admin-view, #kitchen-view, #customer-view").forEach(function(el) {
+                el.classList.add("hidden");
+            });
+            document.getElementById(view + "-view").classList.remove("hidden");
             state.currentView = view;
         }
 
         function switchTab(tab) {
             state.currentTab = tab;
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(tab + '-tab').classList.remove('hidden');
-            document.querySelectorAll('.nav-item[data-tab]').forEach(el => el.classList.remove('active'));
-            document.querySelector('.nav-item[data-tab="' + tab + '"]').classList.add('active');
+            document.querySelectorAll(".tab-content").forEach(function(el) {
+                el.classList.add("hidden");
+            });
+            document.getElementById(tab + "-tab").classList.remove("hidden");
+            document.querySelectorAll(".nav-item[data-tab]").forEach(function(el) {
+                el.classList.remove("active");
+            });
+            document.querySelector('.nav-item[data-tab="' + tab + '"]').classList.add("active");
 
-            if (tab === 'tables') loadTables();
-            if (tab === 'menu') loadMenu();
-            if (tab === 'orders') loadOrders();
+            if (tab === "tables") loadTables();
+            if (tab === "menu") loadMenu();
+            if (tab === "orders") loadOrders();
         }
 
         // ==================== ADMIN INIT ====================
         async function initAdmin() {
             await Promise.all([loadTables(), loadMenu(), loadOrders()]);
             subscribeToOrders();
-            switchTab('tables');
+            switchTab("tables");
         }
 
         // ==================== TABLES ====================
         async function loadTables() {
-            const { data, error } = await supabase.from('tables').select('*').order('table_number');
-            if (error) { showToast('Failed to load tables', 'error'); return; }
+            const { data, error } = await supabase.from("tables").select("*").order("table_number");
+            if (error) { showToast("Failed to load tables", "error"); return; }
             state.tables = data || [];
             renderTables();
         }
 
         function renderTables() {
-            const container = document.getElementById('tables-container');
-            const activeCount = state.tables.filter(t => t.is_active).length;
-            document.getElementById('stat-total-tables').textContent = state.tables.length;
-            document.getElementById('stat-active-tables').textContent = activeCount;
+            const container = document.getElementById("tables-container");
+            const activeCount = state.tables.filter(function(t) { return t.is_active; }).length;
+            document.getElementById("stat-total-tables").textContent = state.tables.length;
+            document.getElementById("stat-active-tables").textContent = activeCount;
 
             if (state.tables.length === 0) {
-                container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><i class="fas fa-chair"></i><h3>No Tables Yet</h3><p>Add your first table to get started</p></div>';
+                container.innerHTML = "<div class=empty-state style=grid-column:1/-1;><i class="fas fa-chair"></i><h3>No Tables Yet</h3><p>Add your first table to get started</p></div>";
                 return;
             }
 
-            let html = '';
-            for (const table of state.tables) {
+            let html = "";
+            for (let i = 0; i < state.tables.length; i++) {
+                const table = state.tables[i];
                 const isActive = table.is_active;
-                html += '<div class="card table-card">';
-                html += '<span class="status-badge ' + (isActive ? 'active' : 'inactive') + '">' + (isActive ? 'Active' : 'Available') + '</span>';
-                html += '<div class="card-body">';
-                html += '<div class="table-number">' + table.table_number + '</div>';
-                html += '<div class="table-meta">' + (isActive ? 'Session in progress' : 'Ready for guests') + '</div>';
-                html += '<div class="table-actions">';
+                html += "<div class="card table-card">";
+                html += "<span class="status-badge " + (isActive ? "active" : "inactive") + "">" + (isActive ? "Active" : "Available") + "</span>";
+                html += "<div class="card-body">";
+                html += "<div class="table-number">" + table.table_number + "</div>";
+                html += "<div class="table-meta">" + (isActive ? "Session in progress" : "Ready for guests") + "</div>";
+                html += "<div class="table-actions">";
 
                 if (!isActive) {
-                    html += '<button class="btn btn-success btn-sm" onclick="openTable('' + table.id + '')"><i class="fas fa-play"></i> Open</button>';
+                    html += "<button class="btn btn-success btn-sm" data-action="openTable" data-id="" + table.id + ""><i class="fas fa-play"></i> Open</button>";
                 } else {
-                    html += '<button class="btn btn-primary btn-sm" onclick="showQR('' + table.id + '')"><i class="fas fa-qrcode"></i> QR</button>';
-                    html += '<button class="btn btn-secondary btn-sm" onclick="showBill('' + table.id + '')"><i class="fas fa-file-invoice"></i> Bill</button>';
-                    html += '<button class="btn btn-danger btn-sm" onclick="closeTable('' + table.id + '')"><i class="fas fa-stop"></i> Close</button>';
+                    html += "<button class="btn btn-primary btn-sm" data-action="showQR" data-id="" + table.id + ""><i class="fas fa-qrcode"></i> QR</button>";
+                    html += "<button class="btn btn-secondary btn-sm" data-action="showBill" data-id="" + table.id + ""><i class="fas fa-file-invoice"></i> Bill</button>";
+                    html += "<button class="btn btn-danger btn-sm" data-action="closeTable" data-id="" + table.id + ""><i class="fas fa-stop"></i> Close</button>";
                 }
 
-                html += '<button class="btn btn-secondary btn-sm" onclick="deleteTable('' + table.id + '')" style="margin-left:auto;"><i class="fas fa-trash"></i></button>';
-                html += '</div></div></div>';
+                html += "<button class="btn btn-secondary btn-sm" data-action="deleteTable" data-id="" + table.id + "" style="margin-left:auto;"><i class="fas fa-trash"></i></button>";
+                html += "</div></div></div>";
             }
             container.innerHTML = html;
         }
 
         async function handleAddTable(e) {
             e.preventDefault();
-            const num = document.getElementById('table-number-input').value.trim();
-            const { error } = await supabase.from('tables').insert({ table_number: num });
-            if (error) { showToast(error.message, 'error'); return; }
-            closeModal('add-table-modal');
-            document.getElementById('add-table-form').reset();
-            showToast('Table added', 'success');
+            const num = document.getElementById("table-number-input").value.trim();
+            const { error } = await supabase.from("tables").insert({ table_number: num });
+            if (error) { showToast(error.message, "error"); return; }
+            closeModal("add-table-modal");
+            document.getElementById("add-table-form").reset();
+            showToast("Table added", "success");
             loadTables();
         }
 
         async function openTable(tableId) {
-            const table = state.tables.find(t => t.id === tableId);
+            const table = state.tables.find(function(t) { return t.id === tableId; });
             if (!table) return;
 
-            const { data: session, error } = await supabase.from('sessions').insert({
+            const { data: session, error } = await supabase.from("sessions").insert({
                 table_id: tableId,
                 table_number: table.table_number,
-                status: 'active'
+                status: "active"
             }).select().single();
 
-            if (error) { showToast(error.message, 'error'); return; }
+            if (error) { showToast(error.message, "error"); return; }
 
-            await supabase.from('tables').update({ 
-                is_active: true, 
-                current_session_id: session.id 
-            }).eq('id', tableId);
+            await supabase.from("tables").update({
+                is_active: true,
+                current_session_id: session.id
+            }).eq("id", tableId);
 
-            showToast('Table ' + table.table_number + ' opened', 'success');
+            showToast("Table " + table.table_number + " opened", "success");
             loadTables();
-            setTimeout(() => showQR(tableId), 300);
+            setTimeout(function() { showQR(tableId); }, 300);
         }
 
         async function closeTable(tableId) {
-            const table = state.tables.find(t => t.id === tableId);
+            const table = state.tables.find(function(t) { return t.id === tableId; });
             if (!table || !table.is_active) return;
-            if (!confirm('Close table ' + table.table_number + '? This will end the session.')) return;
+            if (!confirm("Close table " + table.table_number + "? This will end the session.")) return;
 
-            await supabase.from('sessions').update({ 
-                status: 'closed', 
-                ended_at: new Date().toISOString() 
-            }).eq('id', table.current_session_id);
+            await supabase.from("sessions").update({
+                status: "closed",
+                ended_at: new Date().toISOString()
+            }).eq("id", table.current_session_id);
 
-            await supabase.from('tables').update({ 
-                is_active: false, 
-                current_session_id: null 
-            }).eq('id', tableId);
+            await supabase.from("tables").update({
+                is_active: false,
+                current_session_id: null
+            }).eq("id", tableId);
 
-            showToast('Table ' + table.table_number + ' closed', 'success');
+            showToast("Table " + table.table_number + " closed", "success");
             loadTables();
         }
 
         async function deleteTable(tableId) {
-            if (!confirm('Delete this table permanently?')) return;
-            await supabase.from('tables').delete().eq('id', tableId);
-            showToast('Table deleted', 'success');
+            if (!confirm("Delete this table permanently?")) return;
+            await supabase.from("tables").delete().eq("id", tableId);
+            showToast("Table deleted", "success");
             loadTables();
         }
 
         // ==================== QR CODE ====================
         function showQR(tableId) {
-            const table = state.tables.find(t => t.id === tableId);
+            const table = state.tables.find(function(t) { return t.id === tableId; });
             if (!table || !table.current_session_id) return;
 
             const baseUrl = window.location.origin + window.location.pathname;
-            const qrUrl = baseUrl + '?view=customer&table_id=' + tableId + '&session_id=' + table.current_session_id;
-            const qrImage = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(qrUrl);
+            const qrUrl = baseUrl + "?view=customer&table_id=" + tableId + "&session_id=" + table.current_session_id;
+            const qrImage = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" + encodeURIComponent(qrUrl);
 
-            document.getElementById('qr-image').src = qrImage;
-            document.getElementById('qr-table-name').textContent = table.table_number;
+            document.getElementById("qr-image").src = qrImage;
+            document.getElementById("qr-table-name").textContent = table.table_number;
             state.currentQrUrl = qrImage;
             state.currentQrTable = table.table_number;
-            openModal('qr-modal');
+            openModal("qr-modal");
         }
 
         function printQR() {
-            const printWindow = window.open('', '_blank');
+            const printWindow = window.open("", "_blank");
             printWindow.document.write(
-                '<html><head><title>QR Code - ' + state.currentQrTable + '</title></head>' +
-                '<body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:Arial;">' +
-                '<h1 style="font-size:32px;margin-bottom:20px;">' + state.currentQrTable + '</h1>' +
-                '<img src="' + document.getElementById('qr-image').src + '" style="width:300px;height:300px;">' +
-                '<p style="margin-top:20px;color:#666;">Scan to order</p>' +
-                '</body></html>'
+                "<html><head><title>QR Code - " + state.currentQrTable + "</title></head>" +
+                "<body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:Arial;">" +
+                "<h1 style="font-size:32px;margin-bottom:20px;">" + state.currentQrTable + "</h1>" +
+                "<img src="" + document.getElementById("qr-image").src + "" style="width:300px;height:300px;">" +
+                "<p style="margin-top:20px;color:#666;">Scan to order</p>" +
+                "</body></html>"
             );
             printWindow.document.close();
             printWindow.print();
         }
 
         function downloadQR() {
-            const link = document.createElement('a');
-            link.href = document.getElementById('qr-image').src;
-            link.download = 'QR-' + state.currentQrTable + '.png';
+            const link = document.createElement("a");
+            link.href = document.getElementById("qr-image").src;
+            link.download = "QR-" + state.currentQrTable + ".png";
             link.click();
         }
 
         // ==================== MENU ====================
         async function loadMenu() {
-            const { data, error } = await supabase.from('menu_items').select('*').order('category').order('name');
-            if (error) { showToast('Failed to load menu', 'error'); return; }
+            const { data, error } = await supabase.from("menu_items").select("*").order("category").order("name");
+            if (error) { showToast("Failed to load menu", "error"); return; }
             state.menuItems = data || [];
             renderMenu();
             updateCategoryList();
         }
 
         function renderMenu() {
-            const container = document.getElementById('menu-container');
+            const container = document.getElementById("menu-container");
             if (state.menuItems.length === 0) {
-                container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><i class="fas fa-utensils"></i><h3>Menu is Empty</h3><p>Add your first dish to get started</p></div>';
+                container.innerHTML = "<div class=empty-state style=grid-column:1/-1;><i class="fas fa-utensils"></i><h3>Menu is Empty</h3><p>Add your first dish to get started</p></div>";
                 return;
             }
 
-            let html = '';
-            for (const item of state.menuItems) {
-                html += '<div class="card menu-item-card ' + (!item.is_available ? 'opacity-50' : '') + '">';
-                html += '<img src="' + (item.photo_url || 'https://via.placeholder.com/400x300?text=No+Image') + '" class="menu-item-img" alt="' + item.name + '">';
-                html += '<div class="menu-item-body">';
-                html += '<span class="menu-item-category">' + item.category + '</span>';
-                html += '<div class="menu-item-name">' + item.name + '</div>';
-                html += '<div class="menu-item-desc">' + (item.description || '') + '</div>';
-                html += '<div class="menu-item-footer">';
-                html += '<div class="menu-item-price">$' + parseFloat(item.price).toFixed(2) + '</div>';
-                html += '<div class="menu-item-actions">';
-                html += '<button class="btn btn-sm btn-secondary" onclick="editMenuItem('' + item.id + '')"><i class="fas fa-edit"></i></button>';
-                html += '<button class="btn btn-sm btn-danger" onclick="deleteMenuItem('' + item.id + '')"><i class="fas fa-trash"></i></button>';
-                html += '</div></div></div></div>';
+            let html = "";
+            for (let i = 0; i < state.menuItems.length; i++) {
+                const item = state.menuItems[i];
+                html += "<div class="card menu-item-card " + (!item.is_available ? "opacity-50" : "") + "">";
+                html += "<img src="" + (item.photo_url || "https://via.placeholder.com/400x300?text=No+Image") + "" class="menu-item-img" alt="" + item.name + "">";
+                html += "<div class="menu-item-body">";
+                html += "<span class="menu-item-category">" + item.category + "</span>";
+                html += "<div class="menu-item-name">" + item.name + "</div>";
+                html += "<div class="menu-item-desc">" + (item.description || "") + "</div>";
+                html += "<div class="menu-item-footer">";
+                html += "<div class="menu-item-price">$" + parseFloat(item.price).toFixed(2) + "</div>";
+                html += "<div class="menu-item-actions">";
+                html += "<button class="btn btn-sm btn-secondary" data-action="editMenuItem" data-id="" + item.id + ""><i class="fas fa-edit"></i></button>";
+                html += "<button class="btn btn-sm btn-danger" data-action="deleteMenuItem" data-id="" + item.id + ""><i class="fas fa-trash"></i></button>";
+                html += "</div></div></div></div>";
             }
             container.innerHTML = html;
         }
 
         function updateCategoryList() {
-            const categories = [...new Set(state.menuItems.map(i => i.category))];
-            const datalist = document.getElementById('category-list');
-            let html = '';
-            for (const c of categories) {
-                html += '<option value="' + c + '">';
+            const categories = [];
+            for (let i = 0; i < state.menuItems.length; i++) {
+                if (categories.indexOf(state.menuItems[i].category) === -1) {
+                    categories.push(state.menuItems[i].category);
+                }
+            }
+            const datalist = document.getElementById("category-list");
+            let html = "";
+            for (let i = 0; i < categories.length; i++) {
+                html += "<option value="" + categories[i] + "">";
             }
             datalist.innerHTML = html;
         }
 
         function setPhotoType(type) {
             state.photoType = type;
-            document.getElementById('photo-type-url').classList.toggle('btn-primary', type === 'url');
-            document.getElementById('photo-type-url').classList.toggle('btn-secondary', type !== 'url');
-            document.getElementById('photo-type-file').classList.toggle('btn-primary', type === 'file');
-            document.getElementById('photo-type-file').classList.toggle('btn-secondary', type !== 'file');
-            document.getElementById('menu-photo-url').classList.toggle('hidden', type !== 'url');
-            document.getElementById('menu-photo-file').classList.toggle('hidden', type !== 'file');
+            document.getElementById("photo-type-url").classList.toggle("btn-primary", type === "url");
+            document.getElementById("photo-type-url").classList.toggle("btn-secondary", type !== "url");
+            document.getElementById("photo-type-file").classList.toggle("btn-primary", type === "file");
+            document.getElementById("photo-type-file").classList.toggle("btn-secondary", type !== "file");
+            document.getElementById("menu-photo-url").classList.toggle("hidden", type !== "url");
+            document.getElementById("menu-photo-file").classList.toggle("hidden", type !== "file");
         }
 
         async function handleSaveMenuItem(e) {
             e.preventDefault();
-            const id = document.getElementById('menu-item-id').value;
-            const name = document.getElementById('menu-name').value;
-            const description = document.getElementById('menu-desc').value;
-            const price = parseFloat(document.getElementById('menu-price').value);
-            const category = document.getElementById('menu-category').value;
-            const isAvailable = document.getElementById('menu-available').checked;
+            const id = document.getElementById("menu-item-id").value;
+            const name = document.getElementById("menu-name").value;
+            const description = document.getElementById("menu-desc").value;
+            const price = parseFloat(document.getElementById("menu-price").value);
+            const category = document.getElementById("menu-category").value;
+            const isAvailable = document.getElementById("menu-available").checked;
 
-            let photoUrl = '';
-            if (state.photoType === 'url') {
-                photoUrl = document.getElementById('menu-photo-url').value;
+            let photoUrl = "";
+            if (state.photoType === "url") {
+                photoUrl = document.getElementById("menu-photo-url").value;
             } else {
-                const file = document.getElementById('menu-photo-file').files[0];
+                const file = document.getElementById("menu-photo-file").files[0];
                 if (file) {
-                    const fileExt = file.name.split('.').pop();
-                    const fileName = Date.now() + '_' + Math.random().toString(36).substr(2,9) + '.' + fileExt;
-                    const { data, error } = await supabase.storage.from('menu-photos').upload(fileName, file);
-                    if (error) { showToast('Upload failed: ' + error.message, 'error'); return; }
-                    const { data: urlData } = supabase.storage.from('menu-photos').getPublicUrl(fileName);
+                    const fileExt = file.name.split(".").pop();
+                    const fileName = Date.now() + "_" + Math.random().toString(36).substr(2, 9) + "." + fileExt;
+                    const { data, error } = await supabase.storage.from("menu-photos").upload(fileName, file);
+                    if (error) { showToast("Upload failed: " + error.message, "error"); return; }
+                    const { data: urlData } = supabase.storage.from("menu-photos").getPublicUrl(fileName);
                     photoUrl = urlData.publicUrl;
                 }
             }
 
-            const payload = { name, description, price, category, photo_url: photoUrl, is_available: isAvailable };
+            const payload = { name: name, description: description, price: price, category: category, photo_url: photoUrl, is_available: isAvailable };
 
             if (id) {
-                await supabase.from('menu_items').update(payload).eq('id', id);
-                showToast('Item updated', 'success');
+                await supabase.from("menu_items").update(payload).eq("id", id);
+                showToast("Item updated", "success");
             } else {
-                await supabase.from('menu_items').insert(payload);
-                showToast('Item added', 'success');
+                await supabase.from("menu_items").insert(payload);
+                showToast("Item added", "success");
             }
 
-            closeModal('add-menu-modal');
-            document.getElementById('add-menu-form').reset();
-            document.getElementById('menu-item-id').value = '';
-            document.getElementById('menu-modal-title').textContent = 'Add Menu Item';
+            closeModal("add-menu-modal");
+            document.getElementById("add-menu-form").reset();
+            document.getElementById("menu-item-id").value = "";
+            document.getElementById("menu-modal-title").textContent = "Add Menu Item";
             loadMenu();
         }
 
         function editMenuItem(id) {
-            const item = state.menuItems.find(i => i.id === id);
+            const item = state.menuItems.find(function(i) { return i.id === id; });
             if (!item) return;
-            document.getElementById('menu-item-id').value = item.id;
-            document.getElementById('menu-name').value = item.name;
-            document.getElementById('menu-desc').value = item.description || '';
-            document.getElementById('menu-price').value = item.price;
-            document.getElementById('menu-category').value = item.category;
-            document.getElementById('menu-available').checked = item.is_available;
-            document.getElementById('menu-photo-url').value = item.photo_url || '';
-            setPhotoType('url');
-            document.getElementById('menu-modal-title').textContent = 'Edit Menu Item';
-            openModal('add-menu-modal');
+            document.getElementById("menu-item-id").value = item.id;
+            document.getElementById("menu-name").value = item.name;
+            document.getElementById("menu-desc").value = item.description || "";
+            document.getElementById("menu-price").value = item.price;
+            document.getElementById("menu-category").value = item.category;
+            document.getElementById("menu-available").checked = item.is_available;
+            document.getElementById("menu-photo-url").value = item.photo_url || "";
+            setPhotoType("url");
+            document.getElementById("menu-modal-title").textContent = "Edit Menu Item";
+            openModal("add-menu-modal");
         }
 
         async function deleteMenuItem(id) {
-            if (!confirm('Delete this item?')) return;
-            await supabase.from('menu_items').delete().eq('id', id);
-            showToast('Item deleted', 'success');
+            if (!confirm("Delete this item?")) return;
+            await supabase.from("menu_items").delete().eq("id", id);
+            showToast("Item deleted", "success");
             loadMenu();
         }
 
         // ==================== ORDERS ====================
         async function loadOrders() {
-            const { data, error } = await supabase.from('orders')
-                .select('*')
-                .order('created_at', { ascending: false });
-            if (error) { showToast('Failed to load orders', 'error'); return; }
+            const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+            if (error) { showToast("Failed to load orders", "error"); return; }
             state.orders = data || [];
             renderOrders();
         }
 
         function renderOrders() {
-            const container = document.getElementById('orders-container');
+            const container = document.getElementById("orders-container");
             if (state.orders.length === 0) {
-                container.innerHTML = '<div class="empty-state"><i class="fas fa-receipt"></i><h3>No Orders Yet</h3><p>Orders will appear here when customers place them</p></div>';
+                container.innerHTML = "<div class=empty-state><i class="fas fa-receipt"></i><h3>No Orders Yet</h3><p>Orders will appear here when customers place them</p></div>";
                 return;
             }
 
-            let html = '';
-            for (const order of state.orders) {
+            let html = "";
+            for (let i = 0; i < state.orders.length; i++) {
+                const order = state.orders[i];
                 const items = order.items || [];
                 const time = new Date(order.created_at).toLocaleTimeString();
-                html += '<div class="card order-card">';
-                html += '<div class="order-table-badge">' + order.table_number + '</div>';
-                html += '<div class="order-details">';
-                html += '<div class="order-header">';
-                html += '<div><div style="font-weight:700;">Order #' + order.id.substr(-6).toUpperCase() + '</div>';
-                html += '<div class="order-time">' + time + '</div></div>';
-                html += '<div class="order-total">$' + parseFloat(order.total_amount).toFixed(2) + '</div></div>';
-                html += '<div class="order-items">';
-                for (const i of items) {
-                    html += '<span class="order-item-tag">' + i.quantity + 'x ' + i.name + '</span>';
+                html += "<div class="card order-card">";
+                html += "<div class="order-table-badge">" + order.table_number + "</div>";
+                html += "<div class="order-details">";
+                html += "<div class="order-header">";
+                html += "<div><div style=font-weight:700;>Order #" + order.id.substr(-6).toUpperCase() + "</div>";
+                html += "<div class="order-time">" + time + "</div></div>";
+                html += "<div class="order-total">$" + parseFloat(order.total_amount).toFixed(2) + "</div>";
+                html += "</div>";
+                html += "<div class="order-items">";
+                for (let j = 0; j < items.length; j++) {
+                    html += "<span class="order-item-tag">" + items[j].quantity + "x " + items[j].name + "</span>";
                 }
-                html += '</div></div></div>';
+                html += "</div></div></div>";
             }
             container.innerHTML = html;
         }
 
         function subscribeToOrders() {
-            const sub = supabase.channel('orders')
-                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, payload => {
+            const sub = supabase.channel("orders")
+                .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, function(payload) {
                     state.orders.unshift(payload.new);
                     renderOrders();
-                    if (state.currentView === 'kitchen') renderKitchen();
-                    if (state.currentView === 'admin' && state.currentTab === 'orders') {
-                        showToast('New order from ' + payload.new.table_number + '!', 'success');
+                    if (state.currentView === "kitchen") renderKitchen();
+                    if (state.currentView === "admin" && state.currentTab === "orders") {
+                        showToast("New order from " + payload.new.table_number + "!", "success");
                     }
                     if (state.kitchenSound) playSound();
                 })
@@ -1010,58 +1110,60 @@
         }
 
         function playSound() {
-            const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A5+OZURE');
-            audio.play().catch(() => {});
+            const audio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A5+OZURE");
+            audio.play().catch(function() {});
         }
 
         // ==================== KITCHEN ====================
         function openKitchen() {
-            showView('kitchen');
+            showView("kitchen");
             renderKitchen();
         }
 
         function closeKitchen() {
-            showView('admin');
-            switchTab('orders');
+            showView("admin");
+            switchTab("orders");
         }
 
         function toggleKitchenSound() {
             state.kitchenSound = !state.kitchenSound;
-            document.getElementById('sound-btn').innerHTML = state.kitchenSound ? 
-                '<i class="fas fa-volume-up"></i> Sound On' : '<i class="fas fa-volume-mute"></i> Sound Off';
+            document.getElementById("sound-btn").innerHTML = state.kitchenSound ?
+                "<i class="fas fa-volume-up"></i> Sound On" :
+                "<i class="fas fa-volume-mute"></i> Sound Off";
         }
 
         function renderKitchen() {
-            const container = document.getElementById('kitchen-container');
-            const newOrders = state.orders.filter(o => o.is_new);
+            const container = document.getElementById("kitchen-container");
+            const newOrders = state.orders.filter(function(o) { return o.is_new; });
 
             if (newOrders.length === 0) {
-                container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;color:#64748b;"><i class="fas fa-mug-hot" style="font-size:64px;"></i><h3 style="color:white;">All Caught Up!</h3><p>New orders will appear here automatically</p></div>';
+                container.innerHTML = "<div class="empty-state" style="grid-column:1/-1;color:#64748b;"><i class="fas fa-mug-hot" style="font-size:64px;"></i><h3 style="color:white;">All Caught Up!</h3><p>New orders will appear here automatically</p></div>";
                 return;
             }
 
-            let html = '';
-            for (const order of newOrders) {
+            let html = "";
+            for (let i = 0; i < newOrders.length; i++) {
+                const order = newOrders[i];
                 const items = order.items || [];
                 const time = new Date(order.created_at);
                 const minsAgo = Math.floor((Date.now() - time) / 60000);
-                html += '<div class="kitchen-card" id="kitchen-' + order.id + '">';
-                html += '<div class="kitchen-table">' + order.table_number + '</div>';
-                html += '<div class="kitchen-time">' + (minsAgo < 1 ? 'Just now' : minsAgo + ' min ago') + '</div>';
-                html += '<div class="kitchen-items">';
-                for (const i of items) {
-                    html += '<div class="kitchen-item"><span>' + i.name + '</span><span class="kitchen-item-qty">x' + i.quantity + '</span></div>';
+                html += "<div class="kitchen-card" id="kitchen-" + order.id + "">";
+                html += "<div class="kitchen-table">" + order.table_number + "</div>";
+                html += "<div class="kitchen-time">" + (minsAgo < 1 ? "Just now" : minsAgo + " min ago") + "</div>";
+                html += "<div class="kitchen-items">";
+                for (let j = 0; j < items.length; j++) {
+                    html += "<div class="kitchen-item"><span>" + items[j].name + "</span><span class="kitchen-item-qty">x" + items[j].quantity + "</span></div>";
                 }
-                html += '</div>';
-                html += '<button class="btn btn-dark w-full" onclick="markOrderDone('' + order.id + '')"><i class="fas fa-check"></i> Mark Done</button>';
-                html += '</div>';
+                html += "</div>";
+                html += "<button class="btn btn-dark w-full" data-action="markOrderDone" data-id="" + order.id + ""><i class="fas fa-check"></i> Mark Done</button>";
+                html += "</div>";
             }
             container.innerHTML = html;
         }
 
         async function markOrderDone(orderId) {
-            await supabase.from('orders').update({ is_new: false }).eq('id', orderId);
-            const order = state.orders.find(o => o.id === orderId);
+            await supabase.from("orders").update({ is_new: false }).eq("id", orderId);
+            const order = state.orders.find(function(o) { return o.id === orderId; });
             if (order) order.is_new = false;
             renderKitchen();
             renderOrders();
@@ -1069,74 +1171,83 @@
 
         // ==================== CUSTOMER VIEW ====================
         async function initCustomerView(tableId, sessionId) {
-            const { data: session } = await supabase.from('sessions')
-                .select('*, tables(table_number)')
-                .eq('id', sessionId)
-                .eq('status', 'active')
+            const { data: session } = await supabase.from("sessions")
+                .select("*, tables(table_number)")
+                .eq("id", sessionId)
+                .eq("status", "active")
                 .single();
 
             if (!session) {
-                document.body.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;padding:20px;text-align:center;"><i class="fas fa-times-circle" style="font-size:64px;color:var(--danger);margin-bottom:20px;"></i><h1 style="margin-bottom:10px;">Session Expired</h1><p style="color:var(--text-secondary);">Please ask staff for a new QR code.</p></div>';
+                document.body.innerHTML = "<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;padding:20px;text-align:center;"><i class="fas fa-times-circle" style="font-size:64px;color:var(--danger);margin-bottom:20px;"></i><h1 style="margin-bottom:10px;">Session Expired</h1><p style="color:var(--text-secondary);">Please ask staff for a new QR code.</p></div>";
                 return;
             }
 
             state.customerSession = sessionId;
             state.customerTable = session.table_number;
-            document.getElementById('cust-table-num').textContent = session.table_number;
+            document.getElementById("cust-table-num").textContent = session.table_number;
 
-            showView('customer');
+            showView("customer");
             await loadCustomerMenu();
         }
 
         async function loadCustomerMenu() {
-            const { data } = await supabase.from('menu_items')
-                .select('*')
-                .eq('is_available', true)
-                .order('category');
+            const { data } = await supabase.from("menu_items")
+                .select("*")
+                .eq("is_available", true)
+                .order("category");
             state.customerMenu = data || [];
             renderCustomerCategories();
-            renderCustomerMenu('all');
+            renderCustomerMenu("all");
         }
 
         function renderCustomerCategories() {
-            const categories = ['all', ...new Set(state.customerMenu.map(i => i.category))];
-            const container = document.getElementById('category-tabs');
-            let html = '';
-            for (const cat of categories) {
-                html += '<button class="category-tab ' + (cat === 'all' ? 'active' : '') + '" onclick="filterCategory('' + cat + '')">' + (cat === 'all' ? 'All' : cat) + '</button>';
+            const categories = ["all"];
+            for (let i = 0; i < state.customerMenu.length; i++) {
+                if (categories.indexOf(state.customerMenu[i].category) === -1) {
+                    categories.push(state.customerMenu[i].category);
+                }
+            }
+            const container = document.getElementById("category-tabs");
+            let html = "";
+            for (let i = 0; i < categories.length; i++) {
+                const cat = categories[i];
+                html += "<button class="category-tab " + (cat === "all" ? "active" : "") + "" data-action="filterCategory" data-category="" + cat + "">" + (cat === "all" ? "All" : cat) + "</button>";
             }
             container.innerHTML = html;
         }
 
-        function filterCategory(category) {
-            document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
+        function filterCategory(category, btn) {
+            document.querySelectorAll(".category-tab").forEach(function(t) {
+                t.classList.remove("active");
+            });
+            if (btn) btn.classList.add("active");
             renderCustomerMenu(category);
         }
 
         function renderCustomerMenu(category) {
-            const container = document.getElementById('customer-menu');
-            const items = category === 'all' ? state.customerMenu : state.customerMenu.filter(i => i.category === category);
+            const container = document.getElementById("customer-menu");
+            const items = category === "all" ? state.customerMenu : state.customerMenu.filter(function(i) { return i.category === category; });
 
-            let html = '';
-            for (const item of items) {
-                html += '<div class="customer-item">';
-                html += '<img src="' + (item.photo_url || 'https://via.placeholder.com/300x200?text=No+Image') + '" class="customer-item-img" alt="' + item.name + '">';
-                html += '<div class="customer-item-body">';
-                html += '<div class="customer-item-name">' + item.name + '</div>';
-                html += '<div class="customer-item-price">$' + parseFloat(item.price).toFixed(2) + '</div>';
-                html += '<button class="add-btn" onclick="addToCart('' + item.id + '')">+ Add</button>';
-                html += '</div></div>';
+            let html = "";
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                html += "<div class="customer-item">";
+                html += "<img src="" + (item.photo_url || "https://via.placeholder.com/300x200?text=No+Image") + "" class="customer-item-img" alt="" + item.name + "">";
+                html += "<div class="customer-item-body">";
+                html += "<div class="customer-item-name">" + item.name + "</div>";
+                html += "<div class="customer-item-price">$" + parseFloat(item.price).toFixed(2) + "</div>";
+                html += "<button class="add-btn" data-action="addToCart" data-id="" + item.id + "">+ Add</button>";
+                html += "</div></div>";
             }
             container.innerHTML = html;
         }
 
         // ==================== CART ====================
         function addToCart(itemId) {
-            const item = state.customerMenu.find(i => i.id === itemId);
+            const item = state.customerMenu.find(function(i) { return i.id === itemId; });
             if (!item) return;
 
-            const existing = state.cart.find(c => c.menu_item_id === itemId);
+            const existing = state.cart.find(function(c) { return c.menu_item_id === itemId; });
             if (existing) {
                 existing.quantity++;
             } else {
@@ -1149,64 +1260,64 @@
                 });
             }
             updateCartUI();
-            showToast('Added to order', 'success');
+            showToast("Added to order", "success");
         }
 
         function updateCartQty(itemId, delta) {
-            const item = state.cart.find(c => c.menu_item_id === itemId);
+            const item = state.cart.find(function(c) { return c.menu_item_id === itemId; });
             if (!item) return;
             item.quantity += delta;
             if (item.quantity <= 0) {
-                state.cart = state.cart.filter(c => c.menu_item_id !== itemId);
+                state.cart = state.cart.filter(function(c) { return c.menu_item_id !== itemId; });
             }
             updateCartUI();
         }
 
         function updateCartUI() {
-            const badge = document.getElementById('cart-badge');
-            const totalQty = state.cart.reduce((sum, i) => sum + i.quantity, 0);
+            const badge = document.getElementById("cart-badge");
+            const totalQty = state.cart.reduce(function(sum, i) { return sum + i.quantity; }, 0);
             badge.textContent = totalQty;
-            badge.classList.toggle('hidden', totalQty === 0);
+            badge.classList.toggle("hidden", totalQty === 0);
 
-            const container = document.getElementById('cart-items');
+            const container = document.getElementById("cart-items");
             if (state.cart.length === 0) {
-                container.innerHTML = '<div class="empty-state"><i class="fas fa-shopping-bag"></i><h3>Your order is empty</h3></div>';
+                container.innerHTML = "<div class=empty-state><i class="fas fa-shopping-bag"></i><h3>Your order is empty</h3></div>";
             } else {
-                let html = '';
-                for (const item of state.cart) {
-                    html += '<div class="cart-item">';
-                    html += '<img src="' + (item.photo_url || 'https://via.placeholder.com/100?text=No+Image') + '" class="cart-item-img">';
-                    html += '<div class="cart-item-info">';
-                    html += '<div class="cart-item-name">' + item.name + '</div>';
-                    html += '<div class="cart-item-price">$' + parseFloat(item.price).toFixed(2) + '</div>';
-                    html += '<div class="cart-item-qty">';
-                    html += '<button class="qty-btn" onclick="updateCartQty('' + item.menu_item_id + '', -1)">-</button>';
-                    html += '<span style="font-weight:700;min-width:24px;text-align:center;">' + item.quantity + '</span>';
-                    html += '<button class="qty-btn" onclick="updateCartQty('' + item.menu_item_id + '', 1)">+</button>';
-                    html += '</div></div></div>';
+                let html = "";
+                for (let i = 0; i < state.cart.length; i++) {
+                    const item = state.cart[i];
+                    html += "<div class="cart-item">";
+                    html += "<img src="" + (item.photo_url || "https://via.placeholder.com/100?text=No+Image") + "" class="cart-item-img">";
+                    html += "<div class="cart-item-info">";
+                    html += "<div class="cart-item-name">" + item.name + "</div>";
+                    html += "<div class="cart-item-price">$" + parseFloat(item.price).toFixed(2) + "</div>";
+                    html += "<div class="cart-item-qty">";
+                    html += "<button class="qty-btn" data-action="updateCartQty" data-id="" + item.menu_item_id + "" data-delta="-1">-</button>";
+                    html += "<span style="font-weight:700;min-width:24px;text-align:center;">" + item.quantity + "</span>";
+                    html += "<button class="qty-btn" data-action="updateCartQty" data-id="" + item.menu_item_id + "" data-delta="1">+</button>";
+                    html += "</div></div></div>";
                 }
                 container.innerHTML = html;
             }
 
-            const total = state.cart.reduce((sum, i) => sum + (i.price * i.quantity), 0);
-            document.getElementById('cart-total').textContent = '$' + total.toFixed(2);
+            const total = state.cart.reduce(function(sum, i) { return sum + (i.price * i.quantity); }, 0);
+            document.getElementById("cart-total").textContent = "$" + total.toFixed(2);
         }
 
         function toggleCart() {
-            document.getElementById('cart-overlay').classList.toggle('open');
-            document.getElementById('cart-sidebar').classList.toggle('open');
+            document.getElementById("cart-overlay").classList.toggle("open");
+            document.getElementById("cart-sidebar").classList.toggle("open");
         }
 
         async function placeOrder() {
             if (state.cart.length === 0) return;
 
-            const total = state.cart.reduce((sum, i) => sum + (i.price * i.quantity), 0);
-            const sessionResult = await supabase.from('sessions').select('table_id').eq('id', state.customerSession).single();
-            const tableId = sessionResult.data ? sessionResult.data.table_id : null;
+            const total = state.cart.reduce(function(sum, i) { return sum + (i.price * i.quantity); }, 0);
+            const { data: sessionData } = await supabase.from("sessions").select("table_id").eq("id", state.customerSession).single();
 
-            const { error } = await supabase.from('orders').insert({
+            const { error } = await supabase.from("orders").insert({
                 session_id: state.customerSession,
-                table_id: tableId,
+                table_id: sessionData.table_id,
                 table_number: state.customerTable,
                 items: state.cart,
                 total_amount: total,
@@ -1214,55 +1325,57 @@
             });
 
             if (error) {
-                showToast('Failed to place order', 'error');
+                showToast("Failed to place order", "error");
                 return;
             }
 
             state.cart = [];
             updateCartUI();
             toggleCart();
-            showToast('Order placed successfully!', 'success');
+            showToast("Order placed successfully!", "success");
         }
 
         // ==================== BILL ====================
         async function showBill(tableId) {
-            const table = state.tables.find(t => t.id === tableId);
+            const table = state.tables.find(function(t) { return t.id === tableId; });
             if (!table || !table.current_session_id) return;
 
-            const { data: orders } = await supabase.from('orders')
-                .select('*')
-                .eq('session_id', table.current_session_id)
-                .order('created_at');
+            const { data: orders } = await supabase.from("orders")
+                .select("*")
+                .eq("session_id", table.current_session_id)
+                .order("created_at");
 
             const allItems = [];
             let total = 0;
-            (orders || []).forEach(order => {
-                (order.items || []).forEach(item => {
+            (orders || []).forEach(function(order) {
+                (order.items || []).forEach(function(item) {
                     total += item.price * item.quantity;
-                    const existing = allItems.find(i => i.name === item.name);
+                    const existing = allItems.find(function(i) { return i.name === item.name; });
                     if (existing) {
                         existing.quantity += item.quantity;
                     } else {
-                        allItems.push({ ...item });
+                        allItems.push({ name: item.name, price: item.price, quantity: item.quantity });
                     }
                 });
             });
 
-            let billHtml = '<div class="bill-header">';
-            billHtml += '<div class="bill-title">DINEQR</div>';
-            billHtml += '<div style="font-size:13px;color:var(--text-secondary);margin-top:4px;">Restaurant Bill</div>';
-            billHtml += '<div class="bill-table">' + table.table_number + '</div>';
-            billHtml += '<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">' + new Date().toLocaleString() + '</div></div>';
+            let billHtml = "<div class="bill-header">";
+            billHtml += "<div class="bill-title">DINEQR</div>";
+            billHtml += "<div style="font-size:13px;color:var(--text-secondary);margin-top:4px;">Restaurant Bill</div>";
+            billHtml += "<div class="bill-table">" + table.table_number + "</div>";
+            billHtml += "<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">" + new Date().toLocaleString() + "</div>";
+            billHtml += "</div>";
 
-            for (const item of allItems) {
-                billHtml += '<div class="bill-row"><span>' + item.quantity + ' x ' + item.name + '</span><span>$' + (item.price * item.quantity).toFixed(2) + '</span></div>';
+            for (let i = 0; i < allItems.length; i++) {
+                const item = allItems[i];
+                billHtml += "<div class="bill-row"><span>" + item.quantity + " x " + item.name + "</span><span>$" + (item.price * item.quantity).toFixed(2) + "</span></div>";
             }
 
-            billHtml += '<div class="bill-row total"><span>TOTAL</span><span>$' + total.toFixed(2) + '</span></div>';
-            billHtml += '<div class="bill-footer">Thank you for dining with us!</div>';
+            billHtml += "<div class="bill-row total"><span>TOTAL</span><span>$" + total.toFixed(2) + "</span></div>";
+            billHtml += "<div class="bill-footer">Thank you for dining with us!</div>";
 
-            document.getElementById('bill-content').innerHTML = billHtml;
-            openModal('bill-modal');
+            document.getElementById("bill-content").innerHTML = billHtml;
+            openModal("bill-modal");
         }
 
         function printBill() {
@@ -1271,37 +1384,32 @@
 
         // ==================== MODALS ====================
         function openModal(id) {
-            document.getElementById(id).classList.add('open');
+            document.getElementById(id).classList.add("open");
         }
 
         function closeModal(id) {
-            document.getElementById(id).classList.remove('open');
+            document.getElementById(id).classList.remove("open");
         }
-
-        document.querySelectorAll('.modal-overlay').forEach(overlay => {
-            overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) overlay.classList.remove('open');
-            });
-        });
 
         // ==================== TOAST ====================
         function showToast(message, type) {
-            type = type || 'success';
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = 'toast ' + type;
-            const icon = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
-            toast.innerHTML = '<i class="fas ' + icon + '"></i> ' + message;
+            const container = document.getElementById("toast-container");
+            const toast = document.createElement("div");
+            toast.className = "toast " + type;
+            const icon = type === "success" ? "fa-check-circle" : type === "error" ? "fa-exclamation-circle" : "fa-info-circle";
+            toast.innerHTML = "<i class="fas " + icon + ""></i> " + message;
             container.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
+            setTimeout(function() { toast.remove(); }, 3000);
         }
 
         // ==================== KEYBOARD SHORTCUTS ====================
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
-                document.getElementById('cart-overlay').classList.remove('open');
-                document.getElementById('cart-sidebar').classList.remove('open');
+        document.addEventListener("keydown", function(e) {
+            if (e.key === "Escape") {
+                document.querySelectorAll(".modal-overlay.open").forEach(function(m) {
+                    m.classList.remove("open");
+                });
+                document.getElementById("cart-overlay").classList.remove("open");
+                document.getElementById("cart-sidebar").classList.remove("open");
             }
         });
     </script>
