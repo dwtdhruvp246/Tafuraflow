@@ -6,10 +6,12 @@
     <title>DineQR Admin</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         :root {
             --primary: #2563eb; --primary-dark: #1d4ed8; --success: #16a34a; --warning: #ca8a04;
             --danger: #dc2626; --dark: #1e293b; --light: #f8fafc; --gray: #64748b; --border: #e2e8f0;
+            --analytics-bg: #0f172a; --analytics-card: #1e293b; --analytics-text: #e2e8f0;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f1f5f9; color: #334155; }
@@ -65,10 +67,12 @@
         .stat-value { font-size: 2.5rem; font-weight: 700; color: var(--primary); }
         .stat-label { color: var(--gray); font-size: 0.875rem; margin-top: 0.25rem; }
         .stat-fraction { font-size: 0.875rem; color: var(--gray); margin-top: 0.25rem; }
+        .live-timer { font-family: 'SF Mono', monospace; color: var(--warning); font-weight: 600; font-size: 0.875rem; }
+        .live-timer::before { content: "⏱️ "; }
 
         /* Tables */
         .tables-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
-        .table-card { background: white; border-radius: 0.75rem; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 4px solid var(--gray); transition: transform 0.2s; }
+        .table-card { background: white; border-radius: 0.75rem; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 4px solid var(--gray); transition: transform 0.2s; cursor: pointer; }
         .table-card:hover { transform: translateY(-2px); }
         .table-card.occupied { border-left-color: var(--success); }
         .table-card.available { border-left-color: var(--gray); }
@@ -153,6 +157,54 @@
         .empty-state { text-align: center; padding: 3rem; color: var(--gray); }
         .empty-state-icon { font-size: 3rem; margin-bottom: 1rem; }
 
+        /* ============ ANALYTICS PAGE ============ */
+        .analytics-page { background: var(--analytics-bg); min-height: 100vh; }
+        .analytics-page .content-area { background: var(--analytics-bg); }
+        .analytics-page .card { background: var(--analytics-card); color: var(--analytics-text); border: 1px solid #334155; }
+        .analytics-page .card-title { color: var(--analytics-text); }
+        .analytics-page .stat-value { color: #38bdf8; }
+        .analytics-page .stat-label { color: #94a3b8; }
+        .analytics-page .stat-fraction { color: #94a3b8; }
+        .analytics-page .form-group input, .analytics-page .form-group select { background: #1e293b; color: white; border-color: #334155; }
+        .analytics-page .btn-secondary { background: #334155; color: white; border-color: #475569; }
+        .analytics-page .empty-state { color: #94a3b8; }
+        .analytics-page .list-item { background: #1e293b; color: #e2e8f0; }
+        .analytics-page .list-item-sub { color: #94a3b8; }
+        .analytics-page .bill-card { background: #1e293b; color: #e2e8f0; }
+        .analytics-page .bill-row { color: #94a3b8; }
+        .analytics-page .bill-total { border-top-color: #475569; }
+        .analytics-page .table-order-item { color: #94a3b8; }
+        .analytics-page .status-unpaid { background: #451a03; color: #fbbf24; }
+        .analytics-page .status-paid { background: #14532d; color: #4ade80; }
+
+        .analytics-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+        .analytics-filters { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+        .analytics-filters select, .analytics-filters input { padding: 0.5rem 0.75rem; border-radius: 0.5rem; border: 1px solid #334155; background: #1e293b; color: white; font-size: 0.875rem; }
+        .analytics-filters button { padding: 0.5rem 1rem; }
+
+        .chart-container { position: relative; height: 300px; margin-bottom: 1rem; }
+        .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
+        .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .kpi-card { background: var(--analytics-card); border-radius: 0.75rem; padding: 1.5rem; border: 1px solid #334155; }
+        .kpi-value { font-size: 1.875rem; font-weight: 700; color: #38bdf8; margin-bottom: 0.25rem; }
+        .kpi-label { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+        .kpi-change { font-size: 0.875rem; margin-top: 0.5rem; }
+        .kpi-change.up { color: #4ade80; }
+        .kpi-change.down { color: #f87171; }
+
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th { text-align: left; padding: 0.75rem 1rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; border-bottom: 1px solid #334155; }
+        .data-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #334155; font-size: 0.875rem; }
+        .data-table tr:hover td { background: rgba(255,255,255,0.03); }
+        .trend-bar { height: 4px; background: #334155; border-radius: 2px; overflow: hidden; margin-top: 0.25rem; }
+        .trend-bar-fill { height: 100%; background: linear-gradient(90deg, #38bdf8, #818cf8); border-radius: 2px; transition: width 0.5s ease; }
+
+        .top-items-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+        .top-item-row { display: flex; justify-content: space-between; align-items: center; padding: 0.625rem 0; border-bottom: 1px solid #334155; }
+        .top-item-name { font-weight: 500; }
+        .top-item-count { color: #94a3b8; font-size: 0.875rem; }
+        .top-item-revenue { font-weight: 600; color: #4ade80; }
+
         @media (max-width: 768px) {
             .sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 40; transform: translateX(-100%); transition: transform 0.3s; }
             .sidebar.open { transform: translateX(0); }
@@ -162,6 +214,8 @@
             .kitchen-grid { grid-template-columns: 1fr; }
             .tables-grid { grid-template-columns: 1fr; }
             .menu-grid { grid-template-columns: 1fr; }
+            .chart-grid { grid-template-columns: 1fr; }
+            .kpi-row { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 <base target="_blank">
@@ -193,12 +247,13 @@
                 <p style="color:#94a3b8;font-size:0.75rem;margin-top:0.25rem;">Restaurant OS</p>
             </div>
             <nav class="sidebar-nav" id="sidebar-nav">
-                <a href="#" data-section="dashboard" class="active" onclick="showSection('dashboard');return false;">📊 Dashboard</a>
-                <a href="#" data-section="tables" onclick="showSection('tables');return false;">🪑 Tables</a>
-                <a href="#" data-section="menu" onclick="showSection('menu');return false;">🍔 Menu</a>
-                <a href="#" data-section="kitchen" onclick="showSection('kitchen');return false;">👨‍🍳 Kitchen</a>
-                <a href="#" data-section="bills" onclick="showSection('bills');return false;">🧾 Bills</a>
-                <a href="#" data-section="settings" onclick="showSection('settings');return false;">⚙️ Settings</a>
+                <a href="#" data-section="dashboard" class="active" onclick="showSection(&quot;dashboard&quot;);return false;">📊 Dashboard</a>
+                <a href="#" data-section="tables" onclick="showSection(&quot;tables&quot;);return false;">🪑 Tables</a>
+                <a href="#" data-section="menu" onclick="showSection(&quot;menu&quot;);return false;">🍔 Menu</a>
+                <a href="#" data-section="kitchen" onclick="showSection(&quot;kitchen&quot;);return false;">👨‍🍳 Kitchen</a>
+                <a href="#" data-section="bills" onclick="showSection(&quot;bills&quot;);return false;">🧾 Bills</a>
+                <a href="#" data-section="analytics" onclick="showSection(&quot;analytics&quot;);return false;">📈 Analytics</a>
+                <a href="#" data-section="settings" onclick="showSection(&quot;settings&quot;);return false;">⚙️ Settings</a>
             </nav>
             <div class="sidebar-footer">
                 <div style="font-size:0.75rem;margin-bottom:0.75rem;word-break:break-all;color:#94a3b8;" id="user-email">Admin</div>
@@ -206,31 +261,41 @@
             </div>
         </aside>
 
-        <div class="main-content">
+        <div class="main-content" id="main-content">
             <div class="top-bar">
                 <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
                 <h3 id="page-title">Dashboard</h3>
                 <div></div>
             </div>
-            <div class="content-area">
+            <div class="content-area" id="content-area">
 
                 <!-- DASHBOARD -->
                 <section id="dashboard-section" class="section active">
                     <div class="stats-grid">
-                        <div class="stat-card" onclick="showDashboardDetail('occupied')">
+                        <div class="stat-card" onclick="showDashboardDetail(&quot;occupied&quot;)">
                             <div class="stat-value" id="dash-occupied">0/0</div>
                             <div class="stat-label">Occupied Tables</div>
                             <div class="stat-fraction">Click to view occupied tables</div>
                         </div>
-                        <div class="stat-card" onclick="showDashboardDetail('pending')">
+                        <div class="stat-card" onclick="showDashboardDetail(&quot;pending&quot;)">
                             <div class="stat-value" id="dash-pending">0/0</div>
                             <div class="stat-label">Pending Orders</div>
                             <div class="stat-fraction">Tables occupied but not ordered</div>
                         </div>
-                        <div class="stat-card" onclick="showDashboardDetail('preparing')">
+                        <div class="stat-card" onclick="showDashboardDetail(&quot;preparing&quot;)">
                             <div class="stat-value" id="dash-preparing">0</div>
                             <div class="stat-label">Preparing</div>
                             <div class="stat-fraction">Tables waiting for food</div>
+                        </div>
+                        <div class="stat-card" onclick="showDashboardDetail(&quot;occupied-today&quot;)">
+                            <div class="stat-value" id="dash-occupied-today">0</div>
+                            <div class="stat-label">Tables Occupied Today</div>
+                            <div class="stat-fraction">Total tables occupied today</div>
+                        </div>
+                        <div class="stat-card" onclick="showDashboardDetail(&quot;occupied-month&quot;)">
+                            <div class="stat-value" id="dash-occupied-month">0</div>
+                            <div class="stat-label">Tables Occupied This Month</div>
+                            <div class="stat-fraction">Total tables occupied this month</div>
                         </div>
                     </div>
                 </section>
@@ -298,6 +363,106 @@
                     </div>
                 </section>
 
+                <!-- ANALYTICS -->
+                <section id="analytics-section" class="section">
+                    <div class="analytics-header">
+                        <h3 class="card-title" style="color:white;">📈 Financial Analytics</h3>
+                        <div class="analytics-filters">
+                            <select id="analytics-range" onchange="loadAnalytics()">
+                                <option value="today">Today</option>
+                                <option value="week" selected>This Week</option>
+                                <option value="month">This Month</option>
+                                <option value="quarter">This Quarter</option>
+                                <option value="year">This Year</option>
+                                <option value="custom">Custom Range</option>
+                            </select>
+                            <input type="date" id="analytics-start" style="display:none;">
+                            <input type="date" id="analytics-end" style="display:none;">
+                            <button class="btn btn-primary btn-sm" id="analytics-apply" style="display:none;" onclick="loadAnalytics()">Apply</button>
+                        </div>
+                    </div>
+
+                    <!-- KPI Row -->
+                    <div class="kpi-row">
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="kpi-total-sales">$0.00</div>
+                            <div class="kpi-label">Total Sales</div>
+                            <div class="kpi-change" id="kpi-sales-change">—</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="kpi-bills">0</div>
+                            <div class="kpi-label">Bills Generated</div>
+                            <div class="kpi-change" id="kpi-bills-change">—</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="kpi-avg-order">$0.00</div>
+                            <div class="kpi-label">Avg Order Value</div>
+                            <div class="kpi-change" id="kpi-avg-change">—</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="kpi-tables-served">0</div>
+                            <div class="kpi-label">Tables Served</div>
+                            <div class="kpi-change" id="kpi-tables-change">—</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="kpi-total-items">0</div>
+                            <div class="kpi-label">Items Sold</div>
+                            <div class="kpi-change" id="kpi-items-change">—</div>
+                        </div>
+                    </div>
+
+                    <!-- Charts -->
+                    <div class="chart-grid">
+                        <div class="card">
+                            <div class="card-header"><h3 class="card-title">Revenue Trend</h3></div>
+                            <div class="chart-container"><canvas id="revenue-chart"></canvas></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header"><h3 class="card-title">Sales by Category</h3></div>
+                            <div class="chart-container"><canvas id="category-chart"></canvas></div>
+                        </div>
+                    </div>
+
+                    <div class="chart-grid">
+                        <div class="card">
+                            <div class="card-header"><h3 class="card-title">Hourly Sales Pattern</h3></div>
+                            <div class="chart-container"><canvas id="hourly-chart"></canvas></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header"><h3 class="card-title">Payment Status</h3></div>
+                            <div class="chart-container"><canvas id="payment-chart"></canvas></div>
+                        </div>
+                    </div>
+
+                    <!-- Top Items & Tables -->
+                    <div class="top-items-grid">
+                        <div class="card">
+                            <div class="card-header"><h3 class="card-title">🏆 Top Selling Items</h3></div>
+                            <div id="top-items-list"></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header"><h3 class="card-title">📋 Recent Bills</h3></div>
+                            <div id="analytics-bills-list"></div>
+                        </div>
+                    </div>
+
+                    <!-- Full Bill Table -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">📊 Bill Details</h3>
+                            <button class="btn btn-secondary btn-sm" onclick="exportAnalyticsCSV()">⬇️ Export CSV</button>
+                        </div>
+                        <div style="overflow-x:auto;">
+                            <table class="data-table" id="analytics-table">
+                                <thead>
+                                    <tr><th>Date</th><th>Table</th><th>Items</th><th>Subtotal</th><th>Tax</th><th>Total</th><th>Status</th></tr>
+                                </thead>
+                                <tbody id="analytics-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- SETTINGS -->
                 <section id="settings-section" class="section">
                     <div class="settings-grid">
@@ -330,6 +495,7 @@
                                         <label class="perm-item"><input type="checkbox" value="menu" checked> Menu</label>
                                         <label class="perm-item"><input type="checkbox" value="kitchen" checked> Kitchen</label>
                                         <label class="perm-item"><input type="checkbox" value="bills" checked> Bills</label>
+                                        <label class="perm-item"><input type="checkbox" value="analytics" checked> Analytics</label>
                                         <label class="perm-item"><input type="checkbox" value="settings" checked> Settings</label>
                                     </div>
                                     <button class="btn btn-success" style="width:100%;margin-top:0.75rem;" onclick="addStaff()">Add Staff</button>
@@ -351,6 +517,14 @@
         </div>
     </div>
 
+    <div id="table-detail-modal" class="modal-overlay" onclick="closeModal(event, 'table-detail-modal')">
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:700px;">
+            <button class="modal-close" onclick="document.getElementById('table-detail-modal').classList.remove('active')">&times;</button>
+            <div class="modal-title" id="table-detail-title">Table Details</div>
+            <div id="table-detail-content"></div>
+        </div>
+    </div>
+
     <div id="qr-modal" class="modal-overlay" onclick="closeModal(event, 'qr-modal')">
         <div class="modal" onclick="event.stopPropagation()">
             <button class="modal-close" onclick="document.getElementById('qr-modal').classList.remove('active')">&times;</button>
@@ -364,6 +538,7 @@
     </div>
 
     <script>
+
         // ===================== CONFIG =====================
         const CONFIG = {
             SUPABASE_URL: 'https://yalfwsqfnzunecnmxajq.supabase.co',
@@ -374,7 +549,9 @@
         const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
         let currentUser = null, userStaff = null, ordersChannel = null;
         let currentDept = 'all', allDepartments = [];
-        const sectionTitles = { dashboard: 'Dashboard', tables: 'Tables', menu: 'Menu', kitchen: 'Kitchen', bills: 'Bills', settings: 'Settings' };
+        let dashboardTimerInterval = null;
+        let analyticsCharts = {};
+        const sectionTitles = { dashboard: 'Dashboard', tables: 'Tables', menu: 'Menu', kitchen: 'Kitchen', bills: 'Bills', analytics: 'Analytics', settings: 'Settings' };
 
         document.addEventListener('DOMContentLoaded', async () => {
             const { data: { session } } = await sb.auth.getSession();
@@ -384,11 +561,21 @@
                 if (event === 'SIGNED_IN' && session) { currentUser = session.user; await initUser(); }
                 else if (event === 'SIGNED_OUT') { currentUser = null; userStaff = null; showLogin(); }
             });
+            document.getElementById('login-password').addEventListener('keydown', (e) => { if (e.key === 'Enter') handleLogin(); });
+            document.getElementById('login-email').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('login-password').focus(); });
+
+            // Analytics custom range listeners
+            document.getElementById('analytics-range').addEventListener('change', (e) => {
+                const custom = e.target.value === 'custom';
+                document.getElementById('analytics-start').style.display = custom ? 'inline-block' : 'none';
+                document.getElementById('analytics-end').style.display = custom ? 'inline-block' : 'none';
+                document.getElementById('analytics-apply').style.display = custom ? 'inline-block' : 'none';
+            });
         });
 
         async function initUser() {
             const { data: staff } = await sb.from('staff').select('*').eq('user_id', currentUser.id).single();
-            userStaff = staff || { role: 'admin', permissions: ['dashboard','tables','menu','kitchen','bills','settings'] };
+            userStaff = staff || { role: 'admin', permissions: ['dashboard','tables','menu','kitchen','bills','analytics','settings'] };
             document.getElementById('user-email').textContent = currentUser.email;
             applyPermissions();
             showApp();
@@ -419,6 +606,7 @@
 
         async function handleLogout() {
             if (ordersChannel) { sb.removeChannel(ordersChannel); ordersChannel = null; }
+            if (dashboardTimerInterval) { clearInterval(dashboardTimerInterval); dashboardTimerInterval = null; }
             await sb.auth.signOut();
         }
 
@@ -431,11 +619,23 @@
             document.getElementById('page-title').textContent = sectionTitles[sectionId] || sectionId;
             document.getElementById('sidebar').classList.remove('open');
 
+            // Toggle analytics dark mode
+            const mainContent = document.getElementById('main-content');
+            if (sectionId === 'analytics') mainContent.classList.add('analytics-page');
+            else mainContent.classList.remove('analytics-page');
+
+            // Clear dashboard timer when leaving dashboard
+            if (sectionId !== 'dashboard' && dashboardTimerInterval) {
+                clearInterval(dashboardTimerInterval);
+                dashboardTimerInterval = null;
+            }
+
             if (sectionId === 'dashboard') loadDashboard();
             if (sectionId === 'tables') loadTables();
             if (sectionId === 'menu') loadMenuManager();
             if (sectionId === 'kitchen') { loadKitchen(); subscribeToOrders(); }
             if (sectionId === 'bills') loadBills();
+            if (sectionId === 'analytics') loadAnalytics();
             if (sectionId === 'settings') loadSettings();
         }
 
@@ -445,6 +645,9 @@
         // ===================== DASHBOARD =====================
         async function loadDashboard() {
             try {
+                // Clear any existing timer
+                if (dashboardTimerInterval) { clearInterval(dashboardTimerInterval); dashboardTimerInterval = null; }
+
                 const { data: allTables } = await sb.from('restaurant_tables').select('*');
                 const totalTables = allTables?.length || 0;
                 const occupiedTables = allTables?.filter(t => t.status === 'occupied') || [];
@@ -458,12 +661,80 @@
                 const preparingOrders = allOrders?.filter(o => o.status === 'preparing' || o.status === 'pending') || [];
                 const preparingCount = new Set(preparingOrders.map(o => o.table_id)).size;
 
+                // TODAY: count tables that were occupied today (have occupied_at today OR currently occupied)
+                const today = new Date(); today.setHours(0,0,0,0);
+                const todayStr = today.toISOString().split('T')[0];
+                const occupiedToday = allTables?.filter(t => {
+                    if (t.status === 'occupied') return true;
+                    if (t.occupied_at) {
+                        const occDate = new Date(t.occupied_at);
+                        occDate.setHours(0,0,0,0);
+                        return occDate.getTime() === today.getTime();
+                    }
+                    return false;
+                }).length || 0;
+
+                // THIS MONTH: count unique tables occupied this month
+                const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+                const { data: monthBills } = await sb.from('bills').select('table_id').gte('created_at', monthStart.toISOString());
+                const monthTables = new Set(monthBills?.map(b => b.table_id) || []);
+                // Also include currently occupied tables
+                allTables?.forEach(t => {
+                    if (t.status === 'occupied') monthTables.add(t.id);
+                });
+                const occupiedMonth = monthTables.size;
+
                 document.getElementById('dash-occupied').textContent = `${occupiedCount}/${totalTables}`;
                 document.getElementById('dash-pending').textContent = `${pendingCount}/${occupiedCount || 0}`;
                 document.getElementById('dash-preparing').textContent = preparingCount;
+                document.getElementById('dash-occupied-today').textContent = occupiedToday;
+                document.getElementById('dash-occupied-month').textContent = occupiedMonth;
 
-                window._dashboardData = { occupiedTables, pendingTables, preparingOrders, allTables };
+                window._dashboardData = { occupiedTables, pendingTables, preparingOrders, allTables, occupiedToday, occupiedMonth, todayStr };
+
+                // Start live timer for dashboard modals
+                startDashboardTimer();
             } catch (e) { console.error('Dashboard error:', e); }
+        }
+
+        // Live upward timer that updates every second
+        function startDashboardTimer() {
+            if (dashboardTimerInterval) clearInterval(dashboardTimerInterval);
+            dashboardTimerInterval = setInterval(() => {
+                // Update any visible timers in the detail modal
+                const modal = document.getElementById('detail-modal');
+                if (modal.classList.contains('active')) {
+                    updateModalTimers();
+                }
+            }, 1000);
+        }
+
+        function updateModalTimers() {
+            const timers = document.querySelectorAll('.live-timer[data-start]');
+            timers.forEach(el => {
+                const start = new Date(el.dataset.start);
+                el.textContent = formatElapsedLive(start);
+            });
+        }
+
+        // Format elapsed time as upward counting live timer
+        function formatElapsedLive(date) {
+            const diff = Math.floor((Date.now() - date.getTime()) / 1000);
+            const h = Math.floor(diff / 3600);
+            const m = Math.floor((diff % 3600) / 60);
+            const s = diff % 60;
+            if (h > 0) return `${h}h ${m.toString().padStart(2,'0')}m ${s.toString().padStart(2,'0')}s`;
+            return `${m}m ${s.toString().padStart(2,'0')}s`;
+        }
+
+        // Keep the old format for non-live displays
+        function formatElapsed(date) {
+            const diff = Math.floor((Date.now() - date.getTime()) / 1000);
+            const h = Math.floor(diff / 3600);
+            const m = Math.floor((diff % 3600) / 60);
+            const s = diff % 60;
+            if (h > 0) return `${h}h ${m}m`;
+            return `${m}m ${s}s`;
         }
 
         function showDashboardDetail(type) {
@@ -478,8 +749,8 @@
                 if (data.occupiedTables.length === 0) { content.innerHTML = '<div class="empty-state">No occupied tables</div>'; }
                 else {
                     data.occupiedTables.forEach(t => {
-                        const elapsed = t.occupied_at ? formatElapsed(new Date(t.occupied_at)) : 'N/A';
-                        content.innerHTML += `<div class="list-item"><div class="list-item-info"><div class="list-item-title">Table ${t.table_number}</div><div class="list-item-sub">Occupied for ${elapsed}</div></div><span class="timer">${elapsed}</span></div>`;
+                        const elapsed = t.occupied_at ? formatElapsedLive(new Date(t.occupied_at)) : 'N/A';
+                        content.innerHTML += `<div class="list-item"><div class="list-item-info"><div class="list-item-title">Table ${t.table_number}</div><div class="list-item-sub">Occupied at ${new Date(t.occupied_at).toLocaleTimeString()}</div></div><span class="live-timer" data-start="${t.occupied_at}">${elapsed}</span></div>`;
                     });
                 }
             } else if (type === 'pending') {
@@ -487,8 +758,8 @@
                 if (data.pendingTables.length === 0) { content.innerHTML = '<div class="empty-state">All occupied tables have ordered!</div>'; }
                 else {
                     data.pendingTables.forEach(t => {
-                        const elapsed = t.occupied_at ? formatElapsed(new Date(t.occupied_at)) : 'N/A';
-                        content.innerHTML += `<div class="list-item"><div class="list-item-info"><div class="list-item-title">Table ${t.table_number}</div><div class="list-item-sub">No order yet — occupied for ${elapsed}</div></div><span class="timer">${elapsed}</span></div>`;
+                        const elapsed = t.occupied_at ? formatElapsedLive(new Date(t.occupied_at)) : 'N/A';
+                        content.innerHTML += `<div class="list-item"><div class="list-item-info"><div class="list-item-title">Table ${t.table_number}</div><div class="list-item-sub">No order yet — occupied at ${new Date(t.occupied_at).toLocaleTimeString()}</div></div><span class="live-timer" data-start="${t.occupied_at}">${elapsed}</span></div>`;
                     });
                 }
             } else if (type === 'preparing') {
@@ -502,19 +773,33 @@
                         if (o.created_at < byTable[o.table_number].oldest) byTable[o.table_number].oldest = o.created_at;
                     });
                     Object.entries(byTable).forEach(([num, info]) => {
-                        const elapsed = formatElapsed(new Date(info.oldest));
-                        content.innerHTML += `<div class="list-item"><div class="list-item-info"><div class="list-item-title">Table ${num}</div><div class="list-item-sub">${info.orders.length} order(s) waiting</div></div><span class="timer">${elapsed}</span></div>`;
+                        const elapsed = formatElapsedLive(new Date(info.oldest));
+                        content.innerHTML += `<div class="list-item"><div class="list-item-info"><div class="list-item-title">Table ${num}</div><div class="list-item-sub">${info.orders.length} order(s) waiting</div></div><span class="live-timer" data-start="${info.oldest}">${elapsed}</span></div>`;
                     });
                 }
+            } else if (type === 'occupied-today') {
+                title.textContent = `Tables Occupied Today (${data.occupiedToday})`;
+                const todayTables = data.allTables?.filter(t => {
+                    if (t.status === 'occupied') return true;
+                    if (t.occupied_at) {
+                        const occDate = new Date(t.occupied_at);
+                        occDate.setHours(0,0,0,0);
+                        return occDate.getTime() === new Date(data.todayStr).getTime();
+                    }
+                    return false;
+                }) || [];
+                if (!todayTables.length) { content.innerHTML = '<div class="empty-state">No tables occupied today yet</div>'; }
+                else {
+                    todayTables.forEach(t => {
+                        const time = t.occupied_at ? new Date(t.occupied_at).toLocaleTimeString() : 'Currently occupied';
+                        content.innerHTML += `<div class="list-item"><div class="list-item-info"><div class="list-item-title">Table ${t.table_number}</div><div class="list-item-sub">Occupied at ${time}</div></div></div>`;
+                    });
+                }
+            } else if (type === 'occupied-month') {
+                title.textContent = `Tables Occupied This Month (${data.occupiedMonth})`;
+                content.innerHTML = '<div class="empty-state">View detailed analytics in the Analytics page</div>';
             }
             modal.classList.add('active');
-        }
-
-        function formatElapsed(date) {
-            const diff = Math.floor((Date.now() - date.getTime()) / 1000);
-            const m = Math.floor(diff / 60); const h = Math.floor(m / 60);
-            if (h > 0) return `${h}h ${m % 60}m`;
-            return `${m}m ${diff % 60}s`;
         }
 
         // ===================== TABLES =====================
@@ -528,6 +813,12 @@
                 tables.forEach(table => {
                     const card = document.createElement('div');
                     card.className = `table-card ${table.status}`;
+                    // Click occupied tables to see details
+                    if (table.status === 'occupied') {
+                        card.onclick = () => showTableDetail(table.id);
+                        card.style.cursor = 'pointer';
+                        card.title = 'Click to view orders';
+                    }
                     const activeOrders = table.orders?.filter(o => !['served','cancelled'].includes(o.status)) || [];
                     let ordersHtml = '';
                     if (activeOrders.length > 0) {
@@ -539,21 +830,91 @@
                         });
                         ordersHtml += '</div>';
                     }
+                    const elapsed = table.occupied_at ? formatElapsed(new Date(table.occupied_at)) : '';
                     card.innerHTML = `
                         <div class="table-number">Table ${table.table_number}</div>
                         <span class="table-status status-${table.status}">${table.status}</span>
+                        ${table.status === 'occupied' && elapsed ? `<div style="font-size:0.75rem;color:var(--warning);margin-top:0.25rem;">⏱️ ${elapsed}</div>` : ''}
                         ${ordersHtml}
                         <div class="table-actions">
                             ${table.status === 'available' 
-                                ? `<button class="btn btn-success btn-sm" onclick="occupyTable('${table.id}')">Occupy</button>`
-                                : `<button class="btn btn-primary btn-sm" onclick="showQR('${table.id}', ${table.table_number}, '${table.qr_token}')">QR Code</button>
-                                   <button class="btn btn-danger btn-sm" onclick="closeTable('${table.id}')">Close & Bill</button>`
+                                ? `<button class="btn btn-success btn-sm" onclick="event.stopPropagation();occupyTable('${table.id}')">Occupy</button>`
+                                : `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();showQR('${table.id}', ${table.table_number}, '${table.qr_token}')">QR Code</button>
+                                   <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();closeTable('${table.id}')">Close & Bill</button>`
                             }
                         </div>
                     `;
                     grid.appendChild(card);
                 });
             } catch (e) { console.error('Tables error:', e); alert('Error: ' + e.message); }
+        }
+
+        // Show table detail modal with full order history
+        async function showTableDetail(tableId) {
+            try {
+                const { data: table } = await sb.from('restaurant_tables').select('*').eq('id', tableId).single();
+                const { data: orders } = await sb.from('orders')
+                    .select('*, order_items(*, menu_items(name))')
+                    .eq('table_id', tableId)
+                    .order('created_at', { ascending: false });
+
+                const modal = document.getElementById('table-detail-modal');
+                const title = document.getElementById('table-detail-title');
+                const content = document.getElementById('table-detail-content');
+
+                title.textContent = `Table ${table.table_number} — Order History`;
+
+                let html = '';
+
+                // Table info header
+                const occupiedTime = table.occupied_at ? new Date(table.occupied_at).toLocaleString() : 'N/A';
+                html += `<div style="background:#f8fafc;border-radius:0.5rem;padding:1rem;margin-bottom:1rem;">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;font-size:0.875rem;">
+                        <div><strong>Status:</strong> <span style="text-transform:uppercase;font-weight:600;color:${table.status === 'occupied' ? 'var(--success)' : 'var(--gray)'}">${table.status}</span></div>
+                        <div><strong>Occupied At:</strong> ${occupiedTime}</div>
+                    </div>
+                    ${table.occupied_at ? `<div style="margin-top:0.5rem;color:var(--warning);font-weight:600;">⏱️ Elapsed: ${formatElapsedLive(new Date(table.occupied_at))}</div>` : ''}
+                </div>`;
+
+                if (!orders?.length) {
+                    html += '<div class="empty-state">No orders placed yet</div>';
+                } else {
+                    html += '<div style="max-height:400px;overflow-y:auto;">';
+                    orders.forEach((order, idx) => {
+                        const orderTime = new Date(order.created_at).toLocaleString();
+                        const statusColor = order.status === 'pending' ? 'var(--warning)' : order.status === 'preparing' ? 'var(--primary)' : order.status === 'ready' ? 'var(--success)' : 'var(--gray)';
+                        html += `<div style="border:1px solid var(--border);border-radius:0.5rem;margin-bottom:0.75rem;overflow:hidden;">
+                            <div style="background:#f1f5f9;padding:0.75rem 1rem;display:flex;justify-content:space-between;align-items:center;">
+                                <div><strong>Order #${orders.length - idx}</strong> <span style="font-size:0.75rem;color:var(--gray);">• ${orderTime}</span></div>
+                                <span style="text-transform:uppercase;font-size:0.75rem;font-weight:600;color:${statusColor}">${order.status}</span>
+                            </div>
+                            <div style="padding:0.75rem 1rem;">`;
+
+                        if (order.order_items?.length) {
+                            order.order_items.forEach(oi => {
+                                html += `<div style="display:flex;justify-content:space-between;padding:0.375rem 0;border-bottom:1px solid #f1f5f9;">
+                                    <span>${oi.quantity}× ${oi.item_name || oi.menu_items?.name || 'Item'}</span>
+                                    <span style="font-weight:600;">$${(oi.quantity * oi.price_at_time).toFixed(2)}</span>
+                                </div>`;
+                                if (oi.notes) {
+                                    html += `<div style="font-size:0.75rem;color:var(--gray);font-style:italic;padding-left:1rem;">Note: ${oi.notes}</div>`;
+                                }
+                            });
+                            html += `<div style="display:flex;justify-content:space-between;padding:0.5rem 0;margin-top:0.5rem;border-top:2px solid var(--border);font-weight:700;">
+                                <span>Total</span>
+                                <span>$${parseFloat(order.total_amount).toFixed(2)}</span>
+                            </div>`;
+                        } else {
+                            html += '<div style="color:var(--gray);font-size:0.875rem;">No items in this order</div>';
+                        }
+                        html += `</div></div>`;
+                    });
+                    html += '</div>';
+                }
+
+                content.innerHTML = html;
+                modal.classList.add('active');
+            } catch (e) { console.error('Table detail error:', e); alert('Error loading table details: ' + e.message); }
         }
 
         async function addTable() {
@@ -752,7 +1113,7 @@
                     const status = allPending ? 'pending' : (allPreparing ? 'preparing' : 'mixed');
                     const card = document.createElement('div');
                     card.className = `kitchen-card ${status}`;
-                    const elapsed = formatElapsed(new Date(group.oldest));
+                    const elapsed = formatElapsedLive(new Date(group.oldest));
                     let itemsHtml = group.items.map(i => `<div class="kitchen-item"><strong>${i.quantity}×</strong> ${i.item_name || i.menu_items?.name || 'Item'} ${i.notes ? `<em style="color:var(--gray);font-size:0.875rem;">(${i.notes})</em>` : ''}</div>`).join('');
                     let actionText = status === 'pending' ? 'START PREPARING' : 'MARK READY';
                     let nextStatus = status === 'pending' ? 'preparing' : 'ready';
@@ -865,7 +1226,6 @@
             const perms = Array.from(document.querySelectorAll('#staff-perms input:checked')).map(cb => cb.value);
             if (!name || !email) { alert('Enter name and email'); return; }
 
-            // Create auth user first
             const password = Math.random().toString(36).slice(-8) + 'A1!';
             const { data: authUser, error: authError } = await sb.auth.signUp({ email, password });
             if (authError && !authError.message.includes('already registered')) { alert('Auth error: ' + authError.message); return; }
@@ -882,6 +1242,376 @@
         }
 
         async function deleteStaff(id) { if (confirm('Remove this staff member?')) { await sb.from('staff').delete().eq('id', id); loadStaff(); } }
+
+        // ===================== ANALYTICS =====================
+        function getDateRange(range) {
+            const now = new Date();
+            let start, end, prevStart, prevEnd;
+            end = new Date(now);
+            end.setHours(23, 59, 59, 999);
+
+            switch(range) {
+                case 'today':
+                    start = new Date(now); start.setHours(0, 0, 0, 0);
+                    prevStart = new Date(start); prevStart.setDate(prevStart.getDate() - 1);
+                    prevEnd = new Date(prevStart); prevEnd.setHours(23, 59, 59, 999);
+                    break;
+                case 'week':
+                    start = new Date(now); start.setDate(start.getDate() - start.getDay()); start.setHours(0, 0, 0, 0);
+                    prevStart = new Date(start); prevStart.setDate(prevStart.getDate() - 7);
+                    prevEnd = new Date(start); prevEnd.setMilliseconds(-1);
+                    break;
+                case 'month':
+                    start = new Date(now.getFullYear(), now.getMonth(), 1);
+                    prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                    prevEnd = new Date(start); prevEnd.setMilliseconds(-1);
+                    break;
+                case 'quarter':
+                    const q = Math.floor(now.getMonth() / 3);
+                    start = new Date(now.getFullYear(), q * 3, 1);
+                    prevStart = new Date(now.getFullYear(), (q - 1) * 3, 1);
+                    prevEnd = new Date(start); prevEnd.setMilliseconds(-1);
+                    break;
+                case 'year':
+                    start = new Date(now.getFullYear(), 0, 1);
+                    prevStart = new Date(now.getFullYear() - 1, 0, 1);
+                    prevEnd = new Date(start); prevEnd.setMilliseconds(-1);
+                    break;
+                case 'custom':
+                    const s = document.getElementById('analytics-start').value;
+                    const e = document.getElementById('analytics-end').value;
+                    if (!s || !e) return null;
+                    start = new Date(s); start.setHours(0, 0, 0, 0);
+                    end = new Date(e); end.setHours(23, 59, 59, 999);
+                    const daysDiff = Math.floor((end - start) / 86400000);
+                    prevStart = new Date(start); prevStart.setDate(prevStart.getDate() - daysDiff - 1);
+                    prevEnd = new Date(start); prevEnd.setMilliseconds(-1);
+                    break;
+            }
+            return { start: start.toISOString(), end: end.toISOString(), prevStart: prevStart?.toISOString(), prevEnd: prevEnd?.toISOString() };
+        }
+
+        async function loadAnalytics() {
+            const range = document.getElementById('analytics-range').value;
+            const dates = getDateRange(range);
+            if (!dates) return;
+
+            try {
+                // Fetch bills in range
+                const { data: bills } = await sb.from('bills')
+                    .select('*, orders(*, order_items(*, menu_items(name, category_id, categories(name))))')
+                    .gte('created_at', dates.start)
+                    .lte('created_at', dates.end)
+                    .order('created_at', { ascending: true });
+
+                // Fetch previous period for comparison
+                const { data: prevBills } = await sb.from('bills')
+                    .select('*')
+                    .gte('created_at', dates.prevStart)
+                    .lte('created_at', dates.prevEnd);
+
+                // Fetch all orders in range for item analysis
+                const { data: orders } = await sb.from('orders')
+                    .select('*, order_items(*, menu_items(name, category_id, categories(name)))')
+                    .gte('created_at', dates.start)
+                    .lte('created_at', dates.end);
+
+                const currentData = processAnalyticsData(bills || [], orders || []);
+                const prevData = processAnalyticsData(prevBills || [], []);
+
+                updateKPIs(currentData, prevData);
+                renderCharts(currentData, range);
+                renderTopItems(currentData);
+                renderAnalyticsBills(currentData.bills);
+                renderAnalyticsTable(currentData.bills);
+
+            } catch (e) { console.error('Analytics error:', e); }
+        }
+
+        function processAnalyticsData(bills, orders) {
+            const totalSales = bills.reduce((sum, b) => sum + parseFloat(b.final_amount || 0), 0);
+            const totalBills = bills.length;
+            const avgOrder = totalBills > 0 ? totalSales / totalBills : 0;
+            const tablesServed = new Set(bills.map(b => b.table_id)).size;
+
+            // Count items sold
+            let totalItems = 0;
+            const itemCounts = {};
+            const categorySales = {};
+            const hourlySales = Array(24).fill(0);
+            const dailySales = {};
+
+            orders.forEach(o => {
+                const hour = new Date(o.created_at).getHours();
+                const day = o.created_at.split('T')[0];
+
+                o.order_items?.forEach(oi => {
+                    totalItems += oi.quantity;
+                    const itemName = oi.item_name || oi.menu_items?.name || 'Unknown';
+                    const itemPrice = parseFloat(oi.price_at_time || 0);
+                    const itemRevenue = oi.quantity * itemPrice;
+
+                    if (!itemCounts[itemName]) itemCounts[itemName] = { count: 0, revenue: 0 };
+                    itemCounts[itemName].count += oi.quantity;
+                    itemCounts[itemName].revenue += itemRevenue;
+
+                    const catName = oi.menu_items?.categories?.name || 'Uncategorized';
+                    if (!categorySales[catName]) categorySales[catName] = 0;
+                    categorySales[catName] += itemRevenue;
+                });
+
+                hourlySales[hour] += parseFloat(o.total_amount || 0);
+                if (!dailySales[day]) dailySales[day] = 0;
+                dailySales[day] += parseFloat(o.total_amount || 0);
+            });
+
+            // Also process bills for daily sales if orders are empty
+            if (Object.keys(dailySales).length === 0) {
+                bills.forEach(b => {
+                    const day = b.created_at.split('T')[0];
+                    if (!dailySales[day]) dailySales[day] = 0;
+                    dailySales[day] += parseFloat(b.final_amount || 0);
+                    const hour = new Date(b.created_at).getHours();
+                    hourlySales[hour] += parseFloat(b.final_amount || 0);
+                });
+            }
+
+            const paidBills = bills.filter(b => b.status === 'paid').length;
+            const unpaidBills = bills.filter(b => b.status === 'unpaid').length;
+
+            return {
+                totalSales, totalBills, avgOrder, tablesServed, totalItems,
+                itemCounts, categorySales, hourlySales, dailySales,
+                bills, paidBills, unpaidBills
+            };
+        }
+
+        function updateKPIs(current, prev) {
+            const formatChange = (curr, prev) => {
+                if (!prev || prev === 0) return { text: '—', cls: '' };
+                const pct = ((curr - prev) / prev * 100).toFixed(1);
+                const isUp = curr >= prev;
+                return { text: `${isUp ? '▲' : '▼'} ${Math.abs(pct)}% vs prev period`, cls: isUp ? 'up' : 'down' };
+            };
+
+            document.getElementById('kpi-total-sales').textContent = `$${current.totalSales.toFixed(2)}`;
+            const salesChg = formatChange(current.totalSales, prev.totalSales);
+            document.getElementById('kpi-sales-change').textContent = salesChg.text;
+            document.getElementById('kpi-sales-change').className = 'kpi-change ' + salesChg.cls;
+
+            document.getElementById('kpi-bills').textContent = current.totalBills;
+            const billsChg = formatChange(current.totalBills, prev.totalBills);
+            document.getElementById('kpi-bills-change').textContent = billsChg.text;
+            document.getElementById('kpi-bills-change').className = 'kpi-change ' + billsChg.cls;
+
+            document.getElementById('kpi-avg-order').textContent = `$${current.avgOrder.toFixed(2)}`;
+            const avgChg = formatChange(current.avgOrder, prev.avgOrder);
+            document.getElementById('kpi-avg-change').textContent = avgChg.text;
+            document.getElementById('kpi-avg-change').className = 'kpi-change ' + avgChg.cls;
+
+            document.getElementById('kpi-tables-served').textContent = current.tablesServed;
+            const tablesChg = formatChange(current.tablesServed, prev.tablesServed);
+            document.getElementById('kpi-tables-change').textContent = tablesChg.text;
+            document.getElementById('kpi-tables-change').className = 'kpi-change ' + tablesChg.cls;
+
+            document.getElementById('kpi-total-items').textContent = current.totalItems;
+            const itemsChg = formatChange(current.totalItems, prev.totalItems);
+            document.getElementById('kpi-items-change').textContent = itemsChg.text;
+            document.getElementById('kpi-items-change').className = 'kpi-change ' + itemsChg.cls;
+        }
+
+        function renderCharts(data, range) {
+            // Destroy old charts
+            Object.values(analyticsCharts).forEach(c => c?.destroy?.());
+            analyticsCharts = {};
+
+            // Revenue Trend (line chart)
+            const days = Object.keys(data.dailySales).sort();
+            const labels = days.map(d => {
+                if (range === 'today') return new Date(d).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                return new Date(d).toLocaleDateString([], {month: 'short', day: 'numeric'});
+            });
+            const values = days.map(d => data.dailySales[d]);
+
+            analyticsCharts.revenue = new Chart(document.getElementById('revenue-chart'), {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Revenue ($)',
+                        data: values,
+                        borderColor: '#38bdf8',
+                        backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#38bdf8'
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8', callback: v => '$' + v.toFixed(0) } },
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                    }
+                }
+            });
+
+            // Category Sales (doughnut)
+            const catLabels = Object.keys(data.categorySales);
+            const catValues = Object.values(data.categorySales);
+            const colors = ['#38bdf8', '#4ade80', '#fbbf24', '#f87171', '#a78bfa', '#fb923c'];
+
+            analyticsCharts.category = new Chart(document.getElementById('category-chart'), {
+                type: 'doughnut',
+                data: {
+                    labels: catLabels,
+                    datasets: [{
+                        data: catValues,
+                        backgroundColor: colors,
+                        borderColor: '#1e293b',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { color: '#e2e8f0', font: { size: 11 } } }
+                    }
+                }
+            });
+
+            // Hourly Sales (bar chart)
+            const hourLabels = Array.from({length: 24}, (_, i) => `${i}:00`);
+            analyticsCharts.hourly = new Chart(document.getElementById('hourly-chart'), {
+                type: 'bar',
+                data: {
+                    labels: hourLabels,
+                    datasets: [{
+                        label: 'Sales ($)',
+                        data: data.hourlySales,
+                        backgroundColor: '#818cf8',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8', callback: v => '$' + v.toFixed(0) } },
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8', maxTicksLimit: 12 } }
+                    }
+                }
+            });
+
+            // Payment Status (pie)
+            analyticsCharts.payment = new Chart(document.getElementById('payment-chart'), {
+                type: 'pie',
+                data: {
+                    labels: ['Paid', 'Unpaid'],
+                    datasets: [{
+                        data: [data.paidBills, data.unpaidBills],
+                        backgroundColor: ['#4ade80', '#fbbf24'],
+                        borderColor: '#1e293b',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { color: '#e2e8f0', font: { size: 12 } } }
+                    }
+                }
+            });
+        }
+
+        function renderTopItems(data) {
+            const sorted = Object.entries(data.itemCounts)
+                .sort((a, b) => b[1].revenue - a[1].revenue)
+                .slice(0, 10);
+
+            const container = document.getElementById('top-items-list');
+            if (!sorted.length) { container.innerHTML = '<div class="empty-state">No sales data yet</div>'; return; }
+
+            const maxRevenue = sorted[0][1].revenue;
+            let html = '';
+            sorted.forEach(([name, info]) => {
+                const pct = (info.revenue / maxRevenue * 100).toFixed(0);
+                html += `<div class="top-item-row">
+                    <div style="flex:1;min-width:0;">
+                        <div class="top-item-name">${name}</div>
+                        <div class="top-item-count">${info.count} sold</div>
+                        <div class="trend-bar"><div class="trend-bar-fill" style="width:${pct}%"></div></div>
+                    </div>
+                    <div class="top-item-revenue">$${info.revenue.toFixed(2)}</div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function renderAnalyticsBills(bills) {
+            const container = document.getElementById('analytics-bills-list');
+            if (!bills.length) { container.innerHTML = '<div class="empty-state">No bills in this period</div>'; return; }
+
+            const recent = bills.slice(0, 5);
+            let html = '';
+            recent.forEach(b => {
+                const time = new Date(b.created_at).toLocaleString();
+                html += `<div class="bill-card" style="margin-bottom:0.5rem;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-weight:600;">Table ${b.table_number || '?'}</span>
+                        <span class="bill-status status-${b.status}">${b.status}</span>
+                    </div>
+                    <div style="font-size:0.75rem;color:#94a3b8;margin-top:0.25rem;">${time}</div>
+                    <div style="font-size:1.125rem;font-weight:700;color:#38bdf8;margin-top:0.5rem;">$${parseFloat(b.final_amount).toFixed(2)}</div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function renderAnalyticsTable(bills) {
+            const tbody = document.getElementById('analytics-table-body');
+            if (!bills.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No bills in this period</td></tr>'; return; }
+
+            let html = '';
+            bills.forEach(b => {
+                const date = new Date(b.created_at).toLocaleString();
+                // Count items in this bill
+                const itemCount = b.orders?.reduce((sum, o) => sum + (o.order_items?.length || 0), 0) || '—';
+                html += `<tr>
+                    <td>${date}</td>
+                    <td>Table ${b.table_number || '?'}</td>
+                    <td>${itemCount}</td>
+                    <td>$${parseFloat(b.total_amount).toFixed(2)}</td>
+                    <td>$${parseFloat(b.tax_amount).toFixed(2)}</td>
+                    <td style="font-weight:600;color:#38bdf8;">$${parseFloat(b.final_amount).toFixed(2)}</td>
+                    <td><span class="bill-status status-${b.status}" style="font-size:0.625rem;">${b.status}</span></td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function exportAnalyticsCSV() {
+            const range = document.getElementById('analytics-range').value;
+            const bills = window._lastAnalyticsData?.bills || [];
+            if (!bills.length) { alert('No data to export'); return; }
+
+            let csv = 'Date,Table,Items,Subtotal,Tax,Total,Status\n';
+            bills.forEach(b => {
+                const date = new Date(b.created_at).toLocaleString();
+                const items = b.orders?.reduce((sum, o) => sum + (o.order_items?.length || 0), 0) || 0;
+                csv += `"${date}",${b.table_number || '?'},${items},${parseFloat(b.total_amount).toFixed(2)},${parseFloat(b.tax_amount).toFixed(2)},${parseFloat(b.final_amount).toFixed(2)},${b.status}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `dineqr-analytics-${range}-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
     </script>
 </body>
 </html>
