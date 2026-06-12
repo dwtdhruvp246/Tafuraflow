@@ -710,7 +710,7 @@
             const { data: depts } = await sb.from('departments').select('*').order('sort_order');
             allDepartments = depts || [];
             const tabs = document.getElementById('dept-tabs');
-            tabs.innerHTML = '<button class="dept-tab active" data-dept="all" onclick="filterDept('all')">All</button>';
+            tabs.innerHTML = '<button class="dept-tab active" data-dept="all" onclick="filterDept(&quot;all&quot;)">All</button>';
             allDepartments.forEach(d => {
                 tabs.innerHTML += `<button class="dept-tab" data-dept="${d.id}" onclick="filterDept('${d.id}')">${d.name}</button>`;
             });
