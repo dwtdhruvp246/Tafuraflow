@@ -467,6 +467,87 @@
             .sidebar-cyber { position: fixed; left: 0; top: 0; bottom: 0; z-index: 40; transform: translateX(-100%); transition: transform 0.3s; }
             .sidebar-cyber.open { transform: translateX(0); }
         }
+
+        /* Legacy class names used by JS - mapped to cyber theme */
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: rgba(255,255,255,0.02); border-radius: 0.75rem; margin-bottom: 0.5rem; border: 1px solid rgba(255,255,255,0.03); transition: all 0.2s ease; }
+        .list-item:hover { background: rgba(255,255,255,0.04); border-color: rgba(0,255,136,0.1); }
+        .list-item-info { flex: 1; min-width: 0; }
+        .list-item-title { font-weight: 600; color: #e2e8f0; font-size: 0.875rem; }
+        .list-item-sub { font-size: 0.75rem; color: #6b7280; margin-top: 0.125rem; }
+
+        .table-card { background: rgba(19, 19, 31, 0.5); border: 1px solid rgba(255,255,255,0.04); border-left: 3px solid rgba(255,255,255,0.06); border-radius: 1rem; padding: 1.25rem; transition: all 0.3s ease; }
+        .table-card.occupied { border-left-color: #00ff88; background: rgba(0,255,136,0.03); }
+        .table-card:hover { transform: translateY(-2px); border-color: rgba(0,255,136,0.1); box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+        .table-number { font-size: 1.25rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem; }
+        .table-status { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; text-transform: uppercase; }
+        .table-actions { display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap; }
+        .table-order-item { display: flex; justify-content: space-between; padding: 0.25rem 0; font-size: 0.875rem; color: #9ca3af; }
+
+        .kitchen-card { background: rgba(19, 19, 31, 0.6); border: 1px solid rgba(255,255,255,0.04); border-top: 3px solid #f59e0b; border-radius: 1rem; padding: 1.25rem; transition: all 0.3s ease; cursor: pointer; }
+        .kitchen-card.preparing { border-top-color: #0ea5e9; }
+        .kitchen-card.ready { border-top-color: #00ff88; }
+        .kitchen-card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+        .kitchen-table { font-size: 1.125rem; font-weight: 700; color: #fff; margin-bottom: 0.25rem; }
+        .kitchen-time { font-size: 0.75rem; color: #6b7280; margin-bottom: 0.75rem; }
+        .kitchen-items { margin-bottom: 0.75rem; }
+        .kitchen-item { padding: 0.25rem 0; font-size: 0.875rem; color: #e2e8f0; }
+        .kitchen-status { display: inline-block; padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; background: rgba(0,255,136,0.1); color: #00ff88; border: 1px solid rgba(0,255,136,0.2); }
+        .kitchen-status.preparing { background: rgba(14,165,233,0.1); color: #0ea5e9; border-color: rgba(14,165,233,0.2); }
+
+        .bill-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .bill-table { font-size: 1.125rem; font-weight: 700; color: #fff; }
+        .bill-amounts { margin: 1rem 0; }
+        .bill-row { display: flex; justify-content: space-between; padding: 0.25rem 0; font-size: 0.875rem; color: #9ca3af; }
+        .bill-total { display: flex; justify-content: space-between; padding: 0.5rem 0; margin-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1); font-size: 1.125rem; font-weight: 700; color: #fff; }
+        .bill-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+
+        .menu-item-image { width: 100%; height: 160px; background: rgba(255,255,255,0.03); display: flex; align-items: center; justify-content: center; font-size: 2rem; border-bottom: 1px solid rgba(255,255,255,0.04); overflow: hidden; }
+        .menu-item-image img { width: 100%; height: 100%; object-fit: cover; }
+        .menu-item-info { padding: 1rem; }
+        .menu-item-name { font-weight: 600; color: #fff; margin-bottom: 0.25rem; }
+        .menu-item-meta { font-size: 0.75rem; color: #6b7280; margin-bottom: 0.75rem; }
+        .menu-item-footer { display: flex; justify-content: space-between; align-items: center; }
+        .menu-item-price { font-size: 1.125rem; font-weight: 700; color: #00ff88; }
+        .menu-item-actions { display: flex; gap: 0.5rem; align-items: center; }
+
+        .category-tag { background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(14,165,233,0.05)); border: 1px solid rgba(0,255,136,0.15); color: #00ff88; padding: 0.5rem 1rem; border-radius: 0.75rem; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.5rem; }
+        .category-tag button { background: none; border: none; color: #00ff88; cursor: pointer; font-size: 1rem; margin-left: 0.5rem; opacity: 0.7; }
+        .category-tag button:hover { opacity: 1; }
+
+        .btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; cursor: pointer; border: none; transition: all 0.2s ease; }
+        .btn-sm { padding: 0.375rem 0.75rem; font-size: 0.75rem; }
+        .btn-primary { background: linear-gradient(135deg, #00ff88, #00cc6a); color: #0a0a0f; }
+        .btn-primary:hover { box-shadow: 0 4px 20px rgba(0,255,136,0.5); transform: translateY(-1px); }
+        .btn-secondary { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #e2e8f0; }
+        .btn-secondary:hover { background: rgba(255,255,255,0.08); border-color: rgba(0,255,136,0.3); color: #00ff88; }
+        .btn-success { background: linear-gradient(135deg, #22c55e, #16a34a); color: white; }
+        .btn-success:hover { box-shadow: 0 4px 20px rgba(34,197,94,0.5); }
+        .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
+        .btn-danger:hover { box-shadow: 0 4px 20px rgba(239,68,68,0.5); }
+        .btn-warning { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+
+        .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #334155; border-radius: 24px; transition: 0.3s; }
+        .toggle-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+        .toggle-switch input:checked + .toggle-slider { background: #00ff88; box-shadow: 0 0 10px rgba(0,255,136,0.3); }
+        .toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
+
+        .dept-tab { padding: 0.625rem 1.25rem; border-radius: 0.75rem; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); color: #9ca3af; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s ease; }
+        .dept-tab:hover { border-color: rgba(0,255,136,0.3); color: #00ff88; }
+        .dept-tab.active { background: linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,255,136,0.05)); border-color: rgba(0,255,136,0.5); color: #00ff88; box-shadow: 0 0 15px rgba(0,255,136,0.1); }
+
+        .top-item-row { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .top-item-name { font-weight: 500; color: #e2e8f0; font-size: 0.875rem; }
+        .top-item-count { font-size: 0.75rem; color: #6b7280; margin-top: 0.125rem; }
+        .trend-bar { width: 100%; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; margin-top: 0.5rem; overflow: hidden; }
+        .trend-bar-fill { height: 100%; background: linear-gradient(90deg, #00ff88, #0ea5e9); border-radius: 2px; }
+        .top-item-revenue { font-weight: 600; color: #00ff88; font-size: 0.875rem; white-space: nowrap; margin-left: 1rem; }
+
+        .bill-card { background: rgba(19, 19, 31, 0.5); border: 1px solid rgba(255,255,255,0.04); border-radius: 1rem; padding: 1.25rem; margin-bottom: 0.5rem; transition: all 0.3s ease; }
+        .bill-card:hover { border-color: rgba(0,255,136,0.1); }
+
+        .empty-state { text-align: center; padding: 3rem; color: #6b7280; }
     </style>
 <base target="_blank">
 </head>
@@ -821,9 +902,8 @@
         </div>
     </div>
 
-    <script>
-<script>
 
+    <script>
         // ===================== CONFIG =====================
         const CONFIG = {
             SUPABASE_URL: 'https://yalfwsqfnzunecnmxajq.supabase.co',
