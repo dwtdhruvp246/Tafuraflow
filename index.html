@@ -1615,13 +1615,22 @@
             if (!name || !email || !password) { alert('Enter name, email and password'); return; }
             if (password.length < 6) { alert('Password must be at least 6 characters'); return; }
 
+            // Get current session token for auth
+            const { data: { session } } = await sb.auth.getSession();
+            if (!session) { alert('You must be logged in to add staff'); return; }
+
             // Call Edge Function to create user (admin only, bypasses signup restrictions)
             try {
-                const { data, error } = await sb.functions.invoke('create-staff-user', {
-                    body: { email, password, name, role, permissions: perms, department_id: deptId || null }
+                const response = await fetch(`${CONFIG.SUPABASE_URL}/functions/v1/create-staff-user`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password, name, role, permissions: perms, department_id: deptId || null })
                 });
-                if (error) { alert('Error: ' + error.message); return; }
-                if (data?.error) { alert('Error: ' + data.error); return; }
+                const data = await response.json();
+                if (!response.ok) { alert('Error: ' + (data.error || 'Unknown error')); return; }
 
                 document.getElementById('staff-name').value = '';
                 document.getElementById('staff-email').value = '';
