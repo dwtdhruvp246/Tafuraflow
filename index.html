@@ -218,6 +218,25 @@
             outline: none;
         }
         .input-cyber::placeholder { color: #6b7280; }
+        .input-cyber option {
+            background: #1a1a2e;
+            color: #e2e8f0;
+            padding: 0.5rem;
+        }
+        .input-cyber optgroup {
+            background: #13131f;
+            color: #6b7280;
+        }
+        select.input-cyber {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1rem;
+            padding-right: 2.5rem;
+        }
 
         .sidebar-cyber {
             background: linear-gradient(180deg, #0d0d18 0%, #13131f 100%);
@@ -845,6 +864,7 @@
                                 <div class="space-y-3">
                                     <input type="text" id="staff-name" placeholder="Full name" class="input-cyber w-full px-4 py-2.5 rounded-xl text-sm">
                                     <input type="email" id="staff-email" placeholder="Email" class="input-cyber w-full px-4 py-2.5 rounded-xl text-sm">
+                                    <input type="password" id="staff-password" placeholder="Password (min 6 chars)" class="input-cyber w-full px-4 py-2.5 rounded-xl text-sm">
                                     <select id="staff-role" class="input-cyber w-full px-4 py-2.5 rounded-xl text-sm bg-transparent">
                                         <option value="staff">Staff</option>
                                         <option value="manager">Manager</option>
@@ -953,7 +973,7 @@
 
         function applyPermissions() {
             const perms = userStaff?.permissions || [];
-            document.querySelectorAll('.sidebar-nav a').forEach(a => {
+            document.querySelectorAll('#sidebar-nav a').forEach(a => {
                 const section = a.dataset.section;
                 a.classList.toggle('hidden', !perms.includes(section) && userStaff?.role !== 'admin');
             });
@@ -983,7 +1003,7 @@
         function showSection(sectionId) {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             document.getElementById(sectionId + '-section').classList.add('active');
-            document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
+            document.querySelectorAll('#sidebar-nav a').forEach(a => a.classList.remove('active'));
             const navLink = document.querySelector(`.sidebar-nav a[data-section="${sectionId}"]`);
             if (navLink) navLink.classList.add('active');
             document.getElementById('page-title').textContent = sectionTitles[sectionId] || sectionId;
@@ -1588,24 +1608,29 @@
         async function addStaff() {
             const name = document.getElementById('staff-name').value.trim();
             const email = document.getElementById('staff-email').value.trim();
+            const password = document.getElementById('staff-password').value;
             const role = document.getElementById('staff-role').value;
             const deptId = document.getElementById('staff-dept').value;
             const perms = Array.from(document.querySelectorAll('#staff-perms input:checked')).map(cb => cb.value);
-            if (!name || !email) { alert('Enter name and email'); return; }
+            if (!name || !email || !password) { alert('Enter name, email and password'); return; }
+            if (password.length < 6) { alert('Password must be at least 6 characters'); return; }
 
-            const password = Math.random().toString(36).slice(-8) + 'A1!';
-            const { data: authUser, error: authError } = await sb.auth.signUp({ email, password });
-            if (authError && !authError.message.includes('already registered')) { alert('Auth error: ' + authError.message); return; }
+            // Call Edge Function to create user (admin only, bypasses signup restrictions)
+            try {
+                const { data, error } = await sb.functions.invoke('create-staff-user', {
+                    body: { email, password, name, role, permissions: perms, department_id: deptId || null }
+                });
+                if (error) { alert('Error: ' + error.message); return; }
+                if (data?.error) { alert('Error: ' + data.error); return; }
 
-            const userId = authUser?.user?.id;
-            if (!userId) { alert('Could not create user'); return; }
-
-            const { error } = await sb.from('staff').insert([{ user_id: userId, name, email, role, permissions: perms, department_id: deptId || null }]);
-            if (!error) {
-                document.getElementById('staff-name').value = ''; document.getElementById('staff-email').value = '';
-                alert(`Staff created! Temporary password: ${password} (they should change it)`);
+                document.getElementById('staff-name').value = '';
+                document.getElementById('staff-email').value = '';
+                document.getElementById('staff-password').value = '';
+                alert('Staff created successfully!');
                 loadStaff();
-            } else alert('Error: ' + error.message);
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
         }
 
         async function deleteStaff(id) { if (confirm('Remove this staff member?')) { await sb.from('staff').delete().eq('id', id); loadStaff(); } }
