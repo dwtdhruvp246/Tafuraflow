@@ -1,0 +1,543 @@
+-- DineQR complete Supabase schema
+-- Run this file ONCE in a new Supabase project's SQL Editor.
+-- After creating your first account, promote it at the bottom of this file.
+
+create extension if not exists pgcrypto;
+
+create type public.app_role as enum ('super_admin', 'owner', 'manager', 'waiter', 'kitchen', 'cashier');
+create type public.session_status as enum ('open', 'bill_requested', 'closed');
+create type public.order_status as enum ('pending', 'accepted', 'preparing', 'ready', 'served', 'rejected');
+create type public.request_type as enum ('waiter', 'bill');
+create type public.request_status as enum ('open', 'acknowledged', 'resolved');
+create type public.charge_kind as enum ('percentage', 'fixed');
+create type public.payment_method as enum ('cash', 'card', 'bank_transfer', 'other');
+
+create table public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text not null,
+  full_name text not null default '',
+  platform_role public.app_role check (platform_role is null or platform_role = 'super_admin'),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create unique index profiles_email_unique on public.profiles(lower(email));
+
+create table public.restaurants (
+  id uuid primary key default gen_random_uuid(),
+  name text not null check (length(trim(name)) between 2 and 120),
+  slug text not null unique check (slug ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'),
+  currency text not null default 'USD' check (currency = 'USD'),
+  tax_percent numeric(6,3),
+  service_charge_kind public.charge_kind,
+  service_charge_value numeric(12,2),
+  active boolean not null default true,
+  created_by uuid not null references public.profiles(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (tax_percent is null or tax_percent between 0 and 100),
+  check (service_charge_value is null or service_charge_value >= 0),
+  check (service_charge_kind <> 'percentage' or service_charge_value <= 100)
+);
+
+create table public.restaurant_members (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  role public.app_role not null check (role <> 'super_admin'),
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (restaurant_id, user_id)
+);
+
+create table public.staff_invitations (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
+  email text not null,
+  full_name text not null,
+  role public.app_role not null check (role <> 'super_admin'),
+  invited_by uuid not null references public.profiles(id),
+  accepted_at timestamptz,
+  expires_at timestamptz not null default (now() + interval '14 days'),
+  created_at timestamptz not null default now()
+);
+create unique index one_pending_invitation on public.staff_invitations(restaurant_id, lower(email)) where accepted_at is null;
+
+create table public.physical_tables (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
+  label text not null check (length(trim(label)) between 1 and 50),
+  seats integer not null default 2 check (seats between 1 and 100),
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  unique (restaurant_id, label)
+);
+
+create table public.table_sessions (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
+  table_id uuid not null references public.physical_tables(id),
+  public_token uuid not null unique default gen_random_uuid(),
+  status public.session_status not null default 'open',
+  opened_by uuid not null references public.profiles(id),
+  opened_at timestamptz not null default now(),
+  closed_by uuid references public.profiles(id),
+  closed_at timestamptz,
+  subtotal_snapshot numeric(12,2),
+  discount_snapshot numeric(12,2),
+  tax_snapshot numeric(12,2),
+  service_snapshot numeric(12,2),
+  total_snapshot numeric(12,2),
+  check ((status = 'closed' and closed_at is not null) or (status <> 'closed' and closed_at is null))
+);
+create unique index one_active_session_per_table on public.table_sessions(table_id) where status <> 'closed';
+create index sessions_restaurant_status_idx on public.table_sessions(restaurant_id, status);
+
+create table public.menu_categories (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
+  name text not null check (length(trim(name)) between 1 and 80),
+  sort_order integer not null default 0,
+  active boolean not null default true,
+  unique (restaurant_id, name)
+);
+
+create table public.menu_items (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
+  category_id uuid references public.menu_categories(id) on delete set null,
+  name text not null check (length(trim(name)) between 1 and 120),
+  description text not null default '',
+  price numeric(12,2) not null check (price >= 0),
+  available boolean not null default true,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index menu_items_restaurant_idx on public.menu_items(restaurant_id, category_id, available);
+
+create table public.orders (
+  id uuid primary key default gen_random_uuid(),
+  order_number bigint generated always as identity unique,
+  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
+  session_id uuid not null references public.table_sessions(id),
+  status public.order_status not null default 'pending',
+  accepted_by uuid references public.profiles(id),
+  accepted_at timestamptz,
+  rejected_by uuid references public.profiles(id),
+  rejected_at timestamptz,
+  rejection_reason text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index orders_restaurant_status_idx on public.orders(restaurant_id, status, created_at desc);
+create index orders_session_idx on public.orders(session_id, created_at);
+
+create table public.order_items (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid not null references public.orders(id) on delete cascade,
+  menu_item_id uuid references public.menu_items(id) on delete set null,
+  item_name_snapshot text not null,
+  unit_price_snapshot numeric(12,2) not null check (unit_price_snapshot >= 0),
+  quantity integer not null check (quantity between 1 and 100),
+  special_instructions text,
+  voided_at timestamptz,
+  voided_by uuid references public.profiles(id),
+  void_reason text,
+  check ((voided_at is null and void_reason is null) or (voided_at is not null and length(trim(void_reason)) > 0))
+);
+create index order_items_order_idx on public.order_items(order_id);
+
+create table public.discounts (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
+  name text not null,
+  kind public.charge_kind not null,
+  value numeric(12,2) not null check (value >= 0),
+  active boolean not null default true,
+  created_by uuid not null references public.profiles(id),
+  created_at timestamptz not null default now(),
+  check (kind <> 'percentage' or value <= 100)
+);
+
+create table public.applied_discounts (
+  id uuid primary key default gen_random_uuid(),
+  session_id uuid not null references public.table_sessions(id) on delete cascade,
+  discount_id uuid references public.discounts(id) on delete set null,
+  name_snapshot text not null,
+  amount_snapshot numeric(12,2) not null check (amount_snapshot >= 0),
+  applied_by uuid not null references public.profiles(id),
+  created_at timestamptz not null default now()
+);
+create unique index one_discount_per_session on public.applied_discounts(session_id, discount_id) where discount_id is not null;
+
+create table public.customer_requests (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
+  session_id uuid not null references public.table_sessions(id) on delete cascade,
+  type public.request_type not null,
+  status public.request_status not null default 'open',
+  acknowledged_by uuid references public.profiles(id),
+  acknowledged_at timestamptz,
+  resolved_by uuid references public.profiles(id),
+  resolved_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create index requests_restaurant_status_idx on public.customer_requests(restaurant_id, status, created_at desc);
+
+create table public.payments (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
+  session_id uuid not null unique references public.table_sessions(id),
+  method public.payment_method not null,
+  amount numeric(12,2) not null check (amount >= 0),
+  recorded_by uuid not null references public.profiles(id),
+  recorded_at timestamptz not null default now()
+);
+
+create table public.audit_logs (
+  id bigint generated always as identity primary key,
+  restaurant_id uuid references public.restaurants(id) on delete cascade,
+  actor_id uuid references public.profiles(id),
+  action text not null,
+  entity_type text not null,
+  entity_id uuid,
+  details jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+create index audit_restaurant_created_idx on public.audit_logs(restaurant_id, created_at desc);
+
+create or replace function public.set_updated_at() returns trigger language plpgsql as $$
+begin new.updated_at = now(); return new; end;
+$$;
+create trigger profiles_updated before update on public.profiles for each row execute function public.set_updated_at();
+create trigger restaurants_updated before update on public.restaurants for each row execute function public.set_updated_at();
+create trigger members_updated before update on public.restaurant_members for each row execute function public.set_updated_at();
+create trigger menu_items_updated before update on public.menu_items for each row execute function public.set_updated_at();
+create trigger orders_updated before update on public.orders for each row execute function public.set_updated_at();
+
+create or replace function public.is_super_admin() returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists(select 1 from public.profiles where id = auth.uid() and platform_role = 'super_admin');
+$$;
+
+create or replace function public.has_restaurant_role(target uuid, allowed public.app_role[]) returns boolean
+language sql stable security definer set search_path = public as $$
+  select public.is_super_admin() or exists(
+    select 1 from public.restaurant_members
+    where restaurant_id = target and user_id = auth.uid() and active and role = any(allowed)
+  );
+$$;
+
+create or replace function public.handle_new_user() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare invite public.staff_invitations%rowtype;
+begin
+  insert into public.profiles(id, email, full_name)
+  values(new.id, lower(coalesce(new.email, '')), coalesce(new.raw_user_meta_data->>'full_name', ''))
+  on conflict(id) do update set email = excluded.email, full_name = coalesce(nullif(excluded.full_name,''), public.profiles.full_name);
+
+  select * into invite from public.staff_invitations
+  where lower(email) = lower(new.email) and accepted_at is null and expires_at > now()
+  order by created_at limit 1;
+  if found then
+    insert into public.restaurant_members(restaurant_id,user_id,role)
+    values(invite.restaurant_id,new.id,invite.role)
+    on conflict(restaurant_id,user_id) do update set role=excluded.role,active=true;
+    update public.staff_invitations set accepted_at=now() where id=invite.id;
+  end if;
+  return new;
+end;
+$$;
+create trigger on_auth_user_created after insert on auth.users for each row execute function public.handle_new_user();
+
+insert into public.profiles(id,email,full_name)
+select id,lower(coalesce(email,'')),coalesce(raw_user_meta_data->>'full_name','') from auth.users
+on conflict(id) do nothing;
+
+create or replace function public.get_my_context() returns jsonb
+language sql stable security definer set search_path = public as $$
+  select jsonb_build_object(
+    'profile', jsonb_build_object('id',p.id,'email',p.email,'full_name',p.full_name,'platform_role',p.platform_role),
+    'membership', case when m.id is null then null else jsonb_build_object('id',m.id,'restaurant_id',m.restaurant_id,'role',m.role,'active',m.active) end,
+    'restaurant', case when r.id is null then null else to_jsonb(r) end
+  )
+  from public.profiles p
+  left join lateral (select * from public.restaurant_members where user_id=p.id and active order by created_at limit 1) m on true
+  left join public.restaurants r on r.id=m.restaurant_id
+  where p.id=auth.uid();
+$$;
+
+create or replace function public.make_slug(value text) returns text language sql immutable as $$
+  select trim(both '-' from regexp_replace(lower(value),'[^a-z0-9]+','-','g'));
+$$;
+
+create or replace function public.create_restaurant_company(company_name text, owner_name text, owner_email text) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare rid uuid; owner_user_id uuid; base_slug text; final_slug text; suffix int := 1;
+begin
+  if not public.is_super_admin() then raise exception 'Super Admin access required'; end if;
+  if length(trim(company_name)) < 2 then raise exception 'Company name is required'; end if;
+  base_slug := public.make_slug(company_name); final_slug := base_slug;
+  while exists(select 1 from public.restaurants where slug=final_slug) loop suffix:=suffix+1; final_slug:=base_slug||'-'||suffix; end loop;
+  insert into public.restaurants(name,slug,created_by) values(trim(company_name),final_slug,auth.uid()) returning id into rid;
+  select id into owner_user_id from public.profiles where lower(email)=lower(trim(owner_email)) limit 1;
+  if owner_user_id is null then
+    insert into public.staff_invitations(restaurant_id,email,full_name,role,invited_by)
+    values(rid,lower(trim(owner_email)),trim(owner_name),'owner',auth.uid());
+  else
+    insert into public.restaurant_members(restaurant_id,user_id,role) values(rid,owner_user_id,'owner');
+  end if;
+  insert into public.audit_logs(restaurant_id,actor_id,action,entity_type,entity_id,details)
+  values(rid,auth.uid(),'restaurant.created','restaurant',rid,jsonb_build_object('owner_email',lower(trim(owner_email))));
+  return rid;
+end;
+$$;
+
+create or replace function public.invite_staff(target_restaurant uuid, staff_name text, staff_email text, staff_role public.app_role) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare invite_id uuid; staff_user_id uuid;
+begin
+  if staff_role in ('super_admin','owner') then raise exception 'Invalid staff role'; end if;
+  if not public.has_restaurant_role(target_restaurant,array['owner','manager']::public.app_role[]) then raise exception 'Owner or manager access required'; end if;
+  select id into staff_user_id from public.profiles where lower(email)=lower(trim(staff_email)) limit 1;
+  if staff_user_id is null then
+    insert into public.staff_invitations(restaurant_id,email,full_name,role,invited_by)
+    values(target_restaurant,lower(trim(staff_email)),trim(staff_name),staff_role,auth.uid()) returning id into invite_id;
+  else
+    insert into public.restaurant_members(restaurant_id,user_id,role)
+    values(target_restaurant,staff_user_id,staff_role)
+    on conflict(restaurant_id,user_id) do update set role=excluded.role,active=true
+    returning id into invite_id;
+  end if;
+  return invite_id;
+end;
+$$;
+
+create or replace function public.open_table_session(target_table uuid) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare tbl public.physical_tables%rowtype; session_row public.table_sessions%rowtype;
+begin
+  select * into tbl from public.physical_tables where id=target_table and active;
+  if not found then raise exception 'Table not found'; end if;
+  if not public.has_restaurant_role(tbl.restaurant_id,array['owner','manager','waiter']::public.app_role[]) then raise exception 'Not allowed'; end if;
+  if exists(select 1 from public.table_sessions where table_id=target_table and status<>'closed') then raise exception 'Table is already open'; end if;
+  insert into public.table_sessions(restaurant_id,table_id,opened_by) values(tbl.restaurant_id,tbl.id,auth.uid()) returning * into session_row;
+  insert into public.audit_logs(restaurant_id,actor_id,action,entity_type,entity_id) values(tbl.restaurant_id,auth.uid(),'table.opened','table_session',session_row.id);
+  return jsonb_build_object('session_id',session_row.id,'public_token',session_row.public_token,'table_label',tbl.label);
+end;
+$$;
+
+create or replace function public.get_public_session(token uuid) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare s public.table_sessions%rowtype; r public.restaurants%rowtype; table_label text; result jsonb;
+begin
+  select * into s from public.table_sessions where public_token=token and status in ('open','bill_requested');
+  if not found then return null; end if;
+  select * into r from public.restaurants where id=s.restaurant_id and active;
+  select label into table_label from public.physical_tables where id=s.table_id;
+  select jsonb_build_object(
+    'session_id',s.id,'session_status',s.status,'restaurant_id',r.id,'restaurant_name',r.name,'currency',r.currency,
+    'tax_percent',r.tax_percent,'service_charge_kind',r.service_charge_kind,'service_charge_value',r.service_charge_value,'table_label',table_label,
+    'categories',coalesce((select jsonb_agg(jsonb_build_object('id',c.id,'name',c.name,'sort_order',c.sort_order) order by c.sort_order,c.name) from public.menu_categories c where c.restaurant_id=r.id and c.active),'[]'::jsonb),
+    'items',coalesce((select jsonb_agg(jsonb_build_object('id',i.id,'category_id',i.category_id,'name',i.name,'description',i.description,'price',i.price,'sort_order',i.sort_order) order by i.sort_order,i.name) from public.menu_items i where i.restaurant_id=r.id and i.available),'[]'::jsonb)
+  ) into result;
+  return result;
+end;
+$$;
+
+create or replace function public.place_customer_order(token uuid, items jsonb) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare s public.table_sessions%rowtype; order_id uuid; entry jsonb; item public.menu_items%rowtype; qty int; total numeric:=0;
+begin
+  select * into s from public.table_sessions where public_token=token and status='open' for update;
+  if not found then raise exception 'This table session is closed'; end if;
+  if jsonb_typeof(items)<>'array' or jsonb_array_length(items)=0 then raise exception 'The cart is empty'; end if;
+  insert into public.orders(restaurant_id,session_id) values(s.restaurant_id,s.id) returning id into order_id;
+  for entry in select * from jsonb_array_elements(items) loop
+    qty:=coalesce((entry->>'quantity')::int,0);
+    if qty<1 or qty>50 then raise exception 'Invalid quantity'; end if;
+    select * into item from public.menu_items where id=(entry->>'menu_item_id')::uuid and restaurant_id=s.restaurant_id and available;
+    if not found then raise exception 'A menu item is unavailable'; end if;
+    insert into public.order_items(order_id,menu_item_id,item_name_snapshot,unit_price_snapshot,quantity,special_instructions)
+    values(order_id,item.id,item.name,item.price,qty,nullif(trim(entry->>'instructions'),''));
+    total:=total+(item.price*qty);
+  end loop;
+  return jsonb_build_object('order_id',order_id,'total',total,'status','pending');
+end;
+$$;
+
+create or replace function public.create_customer_request(token uuid, request_kind public.request_type) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare s public.table_sessions%rowtype; request_id uuid;
+begin
+  select * into s from public.table_sessions where public_token=token and status in ('open','bill_requested');
+  if not found then raise exception 'This table session is closed'; end if;
+  if exists(select 1 from public.customer_requests where session_id=s.id and type=request_kind and status='open') then
+    select id into request_id from public.customer_requests where session_id=s.id and type=request_kind and status='open' order by created_at desc limit 1;
+    return request_id;
+  end if;
+  insert into public.customer_requests(restaurant_id,session_id,type) values(s.restaurant_id,s.id,request_kind) returning id into request_id;
+  if request_kind='bill' then update public.table_sessions set status='bill_requested' where id=s.id; end if;
+  return request_id;
+end;
+$$;
+
+create or replace function public.set_order_status(target_order uuid, next_status public.order_status, reason text default null) returns void
+language plpgsql security definer set search_path = public as $$
+declare current_order public.orders%rowtype;
+begin
+  select * into current_order from public.orders where id=target_order for update;
+  if not found then raise exception 'Order not found'; end if;
+  if not public.has_restaurant_role(current_order.restaurant_id,array['owner','manager','waiter','kitchen']::public.app_role[]) then raise exception 'Not allowed'; end if;
+  if next_status='rejected' and current_order.status='pending' then
+    update public.orders set status='rejected',rejected_by=auth.uid(),rejected_at=now(),rejection_reason=nullif(trim(reason),'') where id=target_order;
+  elsif next_status='accepted' and current_order.status='pending' then
+    update public.orders set status='accepted',accepted_by=auth.uid(),accepted_at=now() where id=target_order;
+  elsif next_status='preparing' and current_order.status='accepted' then update public.orders set status='preparing' where id=target_order;
+  elsif next_status='ready' and current_order.status='preparing' then update public.orders set status='ready' where id=target_order;
+  elsif next_status='served' and current_order.status='ready' then update public.orders set status='served' where id=target_order;
+  else raise exception 'Invalid order status change'; end if;
+end;
+$$;
+
+create or replace function public.void_order_item(target_item uuid, reason text) returns void
+language plpgsql security definer set search_path = public as $$
+declare rid uuid;
+begin
+  if length(trim(reason))<3 then raise exception 'A void reason is required'; end if;
+  select o.restaurant_id into rid from public.order_items i join public.orders o on o.id=i.order_id where i.id=target_item;
+  if not public.has_restaurant_role(rid,array['owner','manager','waiter']::public.app_role[]) then raise exception 'Not allowed'; end if;
+  update public.order_items set voided_at=now(),voided_by=auth.uid(),void_reason=trim(reason) where id=target_item and voided_at is null;
+end;
+$$;
+
+create or replace function public.apply_discount_to_session(target_session uuid, target_discount uuid) returns numeric
+language plpgsql security definer set search_path = public as $$
+declare s public.table_sessions%rowtype; d public.discounts%rowtype; subtotal numeric; amount numeric;
+begin
+  select * into s from public.table_sessions where id=target_session and status<>'closed';
+  select * into d from public.discounts where id=target_discount and restaurant_id=s.restaurant_id and active;
+  if not public.has_restaurant_role(s.restaurant_id,array['owner','manager','waiter','cashier']::public.app_role[]) then raise exception 'Not allowed'; end if;
+  select coalesce(sum(i.unit_price_snapshot*i.quantity),0) into subtotal from public.orders o join public.order_items i on i.order_id=o.id where o.session_id=s.id and o.status not in ('pending','rejected') and i.voided_at is null;
+  amount:=case when d.kind='percentage' then round(subtotal*d.value/100,2) else least(d.value,subtotal) end;
+  insert into public.applied_discounts(session_id,discount_id,name_snapshot,amount_snapshot,applied_by)
+  values(s.id,d.id,d.name,amount,auth.uid())
+  on conflict(session_id,discount_id) where discount_id is not null
+  do update set name_snapshot=excluded.name_snapshot,amount_snapshot=excluded.amount_snapshot,applied_by=excluded.applied_by,created_at=now();
+  return amount;
+end;
+$$;
+
+create or replace function public.close_table_session(target_session uuid, method public.payment_method) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare s public.table_sessions%rowtype; r public.restaurants%rowtype; subtotal numeric; discount_total numeric; taxable numeric; tax_total numeric; service_total numeric; final_total numeric;
+begin
+  select * into s from public.table_sessions where id=target_session and status<>'closed' for update;
+  if not found then raise exception 'Open session not found'; end if;
+  if not public.has_restaurant_role(s.restaurant_id,array['owner','manager','waiter','cashier']::public.app_role[]) then raise exception 'Owner, manager, waiter or cashier access required'; end if;
+  if exists(select 1 from public.orders where session_id=s.id and status='pending') then raise exception 'Resolve pending orders before closing the table'; end if;
+  select * into r from public.restaurants where id=s.restaurant_id;
+  select coalesce(sum(i.unit_price_snapshot*i.quantity),0) into subtotal from public.orders o join public.order_items i on i.order_id=o.id where o.session_id=s.id and o.status not in ('pending','rejected') and i.voided_at is null;
+  select coalesce(sum(amount_snapshot),0) into discount_total from public.applied_discounts where session_id=s.id;
+  taxable:=greatest(subtotal-discount_total,0);
+  tax_total:=round(taxable*coalesce(r.tax_percent,0)/100,2);
+  service_total:=case when r.service_charge_value is null then 0 when r.service_charge_kind='percentage' then round(taxable*r.service_charge_value/100,2) else r.service_charge_value end;
+  final_total:=taxable+tax_total+service_total;
+  insert into public.payments(restaurant_id,session_id,method,amount,recorded_by) values(s.restaurant_id,s.id,method,final_total,auth.uid());
+  update public.table_sessions set status='closed',closed_by=auth.uid(),closed_at=now(),subtotal_snapshot=subtotal,discount_snapshot=discount_total,tax_snapshot=tax_total,service_snapshot=service_total,total_snapshot=final_total where id=s.id;
+  update public.customer_requests set status='resolved',resolved_by=auth.uid(),resolved_at=now() where session_id=s.id and status<>'resolved';
+  insert into public.audit_logs(restaurant_id,actor_id,action,entity_type,entity_id,details) values(s.restaurant_id,auth.uid(),'table.closed','table_session',s.id,jsonb_build_object('total',final_total,'payment_method',method));
+  return jsonb_build_object(
+    'session_id',s.id,
+    'items',coalesce((select jsonb_agg(jsonb_build_object('name',i.item_name_snapshot,'quantity',i.quantity,'unit_price',i.unit_price_snapshot) order by o.created_at,i.id) from public.orders o join public.order_items i on i.order_id=o.id where o.session_id=s.id and o.status not in ('pending','rejected') and i.voided_at is null),'[]'::jsonb),
+    'subtotal',subtotal,'discount',discount_total,'tax',tax_total,'tax_configured',r.tax_percent is not null,'service_charge',service_total,'service_configured',r.service_charge_value is not null,'total',final_total,'payment_method',method
+  );
+end;
+$$;
+
+create view public.receipts with (security_invoker=true) as
+select s.id,s.restaurant_id,s.table_id,t.label as table_label,s.opened_at,s.closed_at,s.subtotal_snapshot,s.discount_snapshot,s.tax_snapshot,s.service_snapshot,s.total_snapshot,p.method as payment_method,p.recorded_at
+from public.table_sessions s join public.physical_tables t on t.id=s.table_id left join public.payments p on p.session_id=s.id where s.status='closed';
+
+alter table public.profiles enable row level security;
+alter table public.restaurants enable row level security;
+alter table public.restaurant_members enable row level security;
+alter table public.staff_invitations enable row level security;
+alter table public.physical_tables enable row level security;
+alter table public.table_sessions enable row level security;
+alter table public.menu_categories enable row level security;
+alter table public.menu_items enable row level security;
+alter table public.orders enable row level security;
+alter table public.order_items enable row level security;
+alter table public.discounts enable row level security;
+alter table public.applied_discounts enable row level security;
+alter table public.customer_requests enable row level security;
+alter table public.payments enable row level security;
+alter table public.audit_logs enable row level security;
+
+create policy profiles_read on public.profiles for select using(id=auth.uid() or public.is_super_admin() or exists(select 1 from public.restaurant_members mine join public.restaurant_members theirs on theirs.restaurant_id=mine.restaurant_id where mine.user_id=auth.uid() and theirs.user_id=profiles.id and mine.active));
+create policy profiles_self_update on public.profiles for update using(id=auth.uid()) with check(id=auth.uid());
+create policy restaurants_read on public.restaurants for select using(public.is_super_admin() or public.has_restaurant_role(id,array['owner','manager','waiter','kitchen','cashier']::public.app_role[]));
+create policy restaurants_owner_update on public.restaurants for update using(public.has_restaurant_role(id,array['owner']::public.app_role[]));
+create policy members_read on public.restaurant_members for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','kitchen','cashier']::public.app_role[]));
+create policy members_owner_manage on public.restaurant_members for update using(public.has_restaurant_role(restaurant_id,array['owner','manager']::public.app_role[]));
+create policy invitations_read on public.staff_invitations for select using(public.is_super_admin() or public.has_restaurant_role(restaurant_id,array['owner','manager']::public.app_role[]));
+create policy tables_read on public.physical_tables for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','kitchen','cashier']::public.app_role[]));
+create policy tables_manage on public.physical_tables for all using(public.has_restaurant_role(restaurant_id,array['owner','manager']::public.app_role[])) with check(public.has_restaurant_role(restaurant_id,array['owner','manager']::public.app_role[]));
+create policy sessions_read on public.table_sessions for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','kitchen','cashier']::public.app_role[]));
+create policy categories_read on public.menu_categories for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','kitchen','cashier']::public.app_role[]));
+create policy categories_manage on public.menu_categories for all using(public.has_restaurant_role(restaurant_id,array['owner','manager']::public.app_role[])) with check(public.has_restaurant_role(restaurant_id,array['owner','manager']::public.app_role[]));
+create policy items_read on public.menu_items for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','kitchen','cashier']::public.app_role[]));
+create policy items_manage on public.menu_items for all using(public.has_restaurant_role(restaurant_id,array['owner','manager']::public.app_role[])) with check(public.has_restaurant_role(restaurant_id,array['owner','manager']::public.app_role[]));
+create policy orders_read on public.orders for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','kitchen','cashier']::public.app_role[]));
+create policy order_items_read on public.order_items for select using(exists(select 1 from public.orders o where o.id=order_id and public.has_restaurant_role(o.restaurant_id,array['owner','manager','waiter','kitchen','cashier']::public.app_role[])));
+create policy discounts_read on public.discounts for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','cashier']::public.app_role[]));
+create policy discounts_manage on public.discounts for all using(public.has_restaurant_role(restaurant_id,array['owner']::public.app_role[])) with check(public.has_restaurant_role(restaurant_id,array['owner']::public.app_role[]));
+create policy applied_discounts_read on public.applied_discounts for select using(exists(select 1 from public.table_sessions s where s.id=session_id and public.has_restaurant_role(s.restaurant_id,array['owner','manager','waiter','cashier']::public.app_role[])));
+create policy requests_read on public.customer_requests for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','cashier']::public.app_role[]));
+create policy requests_update on public.customer_requests for update using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','cashier']::public.app_role[]));
+create policy payments_read on public.payments for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','cashier']::public.app_role[]));
+create policy audit_read on public.audit_logs for select using(public.is_super_admin() or public.has_restaurant_role(restaurant_id,array['owner']::public.app_role[]));
+
+-- Browser access is still controlled by every row-level security policy above.
+-- Anonymous guests use only the three token-protected functions below.
+revoke all on all tables in schema public from anon;
+grant select,insert,update,delete on public.profiles,public.restaurants,public.restaurant_members,public.staff_invitations,public.physical_tables,public.table_sessions,public.menu_categories,public.menu_items,public.orders,public.order_items,public.discounts,public.applied_discounts,public.customer_requests,public.payments,public.audit_logs to authenticated;
+grant select on public.receipts to authenticated;
+
+revoke all on function public.get_public_session(uuid) from public;
+revoke all on function public.place_customer_order(uuid,jsonb) from public;
+revoke all on function public.create_customer_request(uuid,public.request_type) from public;
+revoke all on function public.get_my_context() from public;
+revoke all on function public.create_restaurant_company(text,text,text) from public;
+revoke all on function public.invite_staff(uuid,text,text,public.app_role) from public;
+revoke all on function public.open_table_session(uuid) from public;
+revoke all on function public.set_order_status(uuid,public.order_status,text) from public;
+revoke all on function public.void_order_item(uuid,text) from public;
+revoke all on function public.apply_discount_to_session(uuid,uuid) from public;
+revoke all on function public.close_table_session(uuid,public.payment_method) from public;
+grant execute on function public.get_public_session(uuid) to anon,authenticated;
+grant execute on function public.place_customer_order(uuid,jsonb) to anon,authenticated;
+grant execute on function public.create_customer_request(uuid,public.request_type) to anon,authenticated;
+grant execute on function public.get_my_context() to authenticated;
+grant execute on function public.create_restaurant_company(text,text,text) to authenticated;
+grant execute on function public.invite_staff(uuid,text,text,public.app_role) to authenticated;
+grant execute on function public.open_table_session(uuid) to authenticated;
+grant execute on function public.set_order_status(uuid,public.order_status,text) to authenticated;
+grant execute on function public.void_order_item(uuid,text) to authenticated;
+grant execute on function public.apply_discount_to_session(uuid,uuid) to authenticated;
+grant execute on function public.close_table_session(uuid,public.payment_method) to authenticated;
+
+do $$ begin
+  alter publication supabase_realtime add table public.orders;
+  alter publication supabase_realtime add table public.customer_requests;
+  alter publication supabase_realtime add table public.table_sessions;
+exception when duplicate_object then null;
+end $$;
+
+-- IMPORTANT FIRST-TIME SETUP
+-- 1. Run this whole file.
+-- 2. Create your own account on signup.html.
+-- 3. Return to SQL Editor and run the line below after replacing the email:
+-- update public.profiles set platform_role='super_admin' where lower(email)=lower('YOUR-EMAIL@example.com');
