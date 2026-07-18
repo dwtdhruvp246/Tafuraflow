@@ -1,0 +1,22 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+
+test("creates a GitHub Pages index file", async () => {
+  const html = await readFile(new URL("../out/index.html", import.meta.url), "utf8");
+  assert.match(html, /DineQR/);
+  assert.match(html, /Platform overview/);
+  assert.match(html, /Restaurant companies/);
+  assert.doesNotMatch(html, /codex-preview|Your site is taking shape/i);
+});
+
+test("keeps the session QR and Super Admin workflows in the static application", async () => {
+  const source = await readFile(new URL("../app/DineQRApp.tsx", import.meta.url), "utf8");
+  assert.match(source, /Add a restaurant company/);
+  assert.match(source, /crypto\.randomUUID\(\)/);
+  assert.match(source, /NEXT_PUBLIC_BASE_PATH/);
+  assert.match(source, /This link expires when the table closes/);
+  assert.match(source, /Resolve pending orders before closing this table/);
+  assert.match(source, /Order sent to your waiter for approval/);
+  assert.match(source, /The previous QR link has expired permanently/);
+});
