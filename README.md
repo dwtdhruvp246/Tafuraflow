@@ -4,7 +4,9 @@ DineQR is a plain HTML restaurant ordering and operations website. It works on G
 
 ## What is included
 
-- Super Admin creates restaurant companies and owner invitations
+- Super Admin creates restaurant companies and private owner invitation links
+- Super Admin can edit, suspend, activate, or delete companies
+- Super Admin manually records payments received from restaurant owners
 - Owner, manager, waiter, kitchen, and cashier accounts
 - Company name appears in staff and customer pages
 - Menu categories and items with descriptions and USD prices
@@ -25,8 +27,8 @@ DineQR is a plain HTML restaurant ordering and operations website. It works on G
 2. Click **SQL Editor** and then **New query**.
 3. Open `supabase/migrations/20260718120000_initial_schema.sql` from this project.
 4. Copy the entire SQL file, paste it into Supabase, and click **Run**. Run it once on a new database.
-5. Publish the website, open `signup.html`, and create your own account.
-6. Return to the Supabase SQL Editor and run this, using your real email:
+5. In Supabase, open **Authentication → Users → Add user** and create your own Super Admin email and password.
+6. Return to the Supabase SQL Editor and run this, using the same email:
 
 ```sql
 update public.profiles
@@ -34,7 +36,9 @@ set platform_role = 'super_admin'
 where lower(email) = lower('YOUR-EMAIL@example.com');
 ```
 
-7. Sign in at `index.html`. You can now add the first company and its owner.
+7. Sign in at `index.html`. You can now add the first company and its owner. DineQR gives you a private invitation link to send to that owner.
+
+If you already ran the earlier DineQR SQL, do not run the complete schema again. Instead, run `supabase/migrations/20260718190000_invites_company_billing.sql` once to add private invitations, company controls, owner phone numbers, and manual owner payments.
 
 If Supabase requires email confirmation, confirm the email before signing in. In **Authentication → URL Configuration**, set the Site URL to your GitHub Pages address, for example `https://dwtdhruvp246.github.io/restaurant-website/`.
 
@@ -54,10 +58,11 @@ Then open **Settings → Pages**, choose **Deploy from a branch**, select the `m
 ## What the files do
 
 - `index.html` — staff login page and the page GitHub Pages opens first
-- `signup.html` — account creation for invited owners and staff
+- `signup.html` — private-link-only account creation for invited owners and staff
 - `forgot-password.html` / `reset-password.html` — password recovery
 - `dashboard.html` — Super Admin or restaurant overview
 - `companies.html` — Super Admin company and owner setup
+- `admin-finance.html` — Super Admin manual restaurant-owner payment records
 - `tables.html` — tables, session opening, QR printing, payments, and final receipts
 - `orders.html` — waiter approval and kitchen order workflow
 - `menu.html` — menu category and item management
@@ -74,5 +79,6 @@ Then open **Settings → Pages**, choose **Deploy from a branch**, select the `m
 - `assets/app.js` — restaurant and Super Admin functionality
 - `assets/customer.js` — customer menu, cart, ordering, and requests
 - `supabase/migrations/20260718120000_initial_schema.sql` — complete database, permissions, and secure functions
+- `supabase/migrations/20260718190000_invites_company_billing.sql` — upgrade for an existing DineQR database
 
 The Supabase anon key in `assets/config.js` is intended to be public. Security is enforced by the SQL row-level security policies. Never put a Supabase service-role key in an HTML or JavaScript file.

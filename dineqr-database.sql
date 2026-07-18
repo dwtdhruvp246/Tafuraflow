@@ -16,6 +16,7 @@ create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text not null,
   full_name text not null default '',
+  phone text,
   platform_role public.app_role check (platform_role is null or platform_role = 'super_admin'),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -55,6 +56,8 @@ create table public.staff_invitations (
   restaurant_id uuid not null references public.restaurants(id) on delete cascade,
   email text not null,
   full_name text not null,
+  phone text,
+  invite_token uuid not null unique default gen_random_uuid(),
   role public.app_role not null check (role <> 'super_admin'),
   invited_by uuid not null references public.profiles(id),
   accepted_at timestamptz,
@@ -207,6 +210,18 @@ create table public.audit_logs (
 );
 create index audit_restaurant_created_idx on public.audit_logs(restaurant_id, created_at desc);
 
+create table public.owner_payments (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
+  amount numeric(12,2) not null check (amount > 0),
+  payment_date date not null default current_date,
+  method public.payment_method not null,
+  notes text,
+  recorded_by uuid not null references public.profiles(id),
+  created_at timestamptz not null default now()
+);
+create index owner_payments_restaurant_date_idx on public.owner_payments(restaurant_id,payment_date desc);
+
 create or replace function public.set_updated_at() returns trigger language plpgsql as $$
 begin new.updated_at = now(); return new; end;
 $$;
@@ -231,16 +246,19 @@ $$;
 
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
-declare invite public.staff_invitations%rowtype;
+declare invite public.staff_invitations%rowtype; supplied_token text;
 begin
-  insert into public.profiles(id, email, full_name)
-  values(new.id, lower(coalesce(new.email, '')), coalesce(new.raw_user_meta_data->>'full_name', ''))
-  on conflict(id) do update set email = excluded.email, full_name = coalesce(nullif(excluded.full_name,''), public.profiles.full_name);
+  insert into public.profiles(id, email, full_name, phone)
+  values(new.id, lower(coalesce(new.email, '')), coalesce(new.raw_user_meta_data->>'full_name', ''),nullif(trim(new.raw_user_meta_data->>'phone'),''))
+  on conflict(id) do update set email = excluded.email, full_name = coalesce(nullif(excluded.full_name,''), public.profiles.full_name),phone=coalesce(excluded.phone,public.profiles.phone);
 
-  select * into invite from public.staff_invitations
-  where lower(email) = lower(new.email) and accepted_at is null and expires_at > now()
-  order by created_at limit 1;
-  if found then
+  supplied_token:=new.raw_user_meta_data->>'invitation_token';
+  if supplied_token is not null and supplied_token ~* '^[0-9a-f-]{36}$' then
+    select * into invite from public.staff_invitations
+    where invite_token=supplied_token::uuid and lower(email)=lower(new.email) and accepted_at is null and expires_at > now()
+    limit 1;
+  end if;
+  if invite.id is not null then
     insert into public.restaurant_members(restaurant_id,user_id,role)
     values(invite.restaurant_id,new.id,invite.role)
     on conflict(restaurant_id,user_id) do update set role=excluded.role,active=true;
@@ -272,45 +290,41 @@ create or replace function public.make_slug(value text) returns text language sq
   select trim(both '-' from regexp_replace(lower(value),'[^a-z0-9]+','-','g'));
 $$;
 
-create or replace function public.create_restaurant_company(company_name text, owner_name text, owner_email text) returns uuid
+create or replace function public.get_public_invitation(token uuid) returns jsonb
+language sql stable security definer set search_path = public as $$
+  select jsonb_build_object('company_name',r.name,'full_name',i.full_name,'email',i.email,'phone',i.phone,'role',i.role,'expires_at',i.expires_at)
+  from public.staff_invitations i join public.restaurants r on r.id=i.restaurant_id
+  where i.invite_token=token and i.accepted_at is null and i.expires_at>now() and r.active;
+$$;
+
+create or replace function public.create_restaurant_company(company_name text, owner_name text, owner_email text, owner_phone text) returns jsonb
 language plpgsql security definer set search_path = public as $$
-declare rid uuid; owner_user_id uuid; base_slug text; final_slug text; suffix int := 1;
+declare rid uuid; token uuid; base_slug text; final_slug text; suffix int := 1;
 begin
   if not public.is_super_admin() then raise exception 'Super Admin access required'; end if;
   if length(trim(company_name)) < 2 then raise exception 'Company name is required'; end if;
+  if exists(select 1 from public.profiles where lower(email)=lower(trim(owner_email))) then raise exception 'This owner email already has an account'; end if;
   base_slug := public.make_slug(company_name); final_slug := base_slug;
   while exists(select 1 from public.restaurants where slug=final_slug) loop suffix:=suffix+1; final_slug:=base_slug||'-'||suffix; end loop;
   insert into public.restaurants(name,slug,created_by) values(trim(company_name),final_slug,auth.uid()) returning id into rid;
-  select id into owner_user_id from public.profiles where lower(email)=lower(trim(owner_email)) limit 1;
-  if owner_user_id is null then
-    insert into public.staff_invitations(restaurant_id,email,full_name,role,invited_by)
-    values(rid,lower(trim(owner_email)),trim(owner_name),'owner',auth.uid());
-  else
-    insert into public.restaurant_members(restaurant_id,user_id,role) values(rid,owner_user_id,'owner');
-  end if;
+  insert into public.staff_invitations(restaurant_id,email,full_name,phone,role,invited_by)
+  values(rid,lower(trim(owner_email)),trim(owner_name),nullif(trim(owner_phone),''),'owner',auth.uid()) returning invite_token into token;
   insert into public.audit_logs(restaurant_id,actor_id,action,entity_type,entity_id,details)
   values(rid,auth.uid(),'restaurant.created','restaurant',rid,jsonb_build_object('owner_email',lower(trim(owner_email))));
-  return rid;
+  return jsonb_build_object('restaurant_id',rid,'invite_token',token,'owner_email',lower(trim(owner_email)));
 end;
 $$;
 
-create or replace function public.invite_staff(target_restaurant uuid, staff_name text, staff_email text, staff_role public.app_role) returns uuid
+create or replace function public.invite_staff(target_restaurant uuid, staff_name text, staff_email text, staff_role public.app_role) returns jsonb
 language plpgsql security definer set search_path = public as $$
-declare invite_id uuid; staff_user_id uuid;
+declare invite_id uuid; token uuid;
 begin
   if staff_role in ('super_admin','owner') then raise exception 'Invalid staff role'; end if;
   if not public.has_restaurant_role(target_restaurant,array['owner','manager']::public.app_role[]) then raise exception 'Owner or manager access required'; end if;
-  select id into staff_user_id from public.profiles where lower(email)=lower(trim(staff_email)) limit 1;
-  if staff_user_id is null then
-    insert into public.staff_invitations(restaurant_id,email,full_name,role,invited_by)
-    values(target_restaurant,lower(trim(staff_email)),trim(staff_name),staff_role,auth.uid()) returning id into invite_id;
-  else
-    insert into public.restaurant_members(restaurant_id,user_id,role)
-    values(target_restaurant,staff_user_id,staff_role)
-    on conflict(restaurant_id,user_id) do update set role=excluded.role,active=true
-    returning id into invite_id;
-  end if;
-  return invite_id;
+  if exists(select 1 from public.profiles where lower(email)=lower(trim(staff_email))) then raise exception 'This email already has an account'; end if;
+  insert into public.staff_invitations(restaurant_id,email,full_name,role,invited_by)
+  values(target_restaurant,lower(trim(staff_email)),trim(staff_name),staff_role,auth.uid()) returning id,invite_token into invite_id,token;
+  return jsonb_build_object('invitation_id',invite_id,'invite_token',token,'email',lower(trim(staff_email)));
 end;
 $$;
 
@@ -335,6 +349,7 @@ begin
   select * into s from public.table_sessions where public_token=token and status in ('open','bill_requested');
   if not found then return null; end if;
   select * into r from public.restaurants where id=s.restaurant_id and active;
+  if not found then return null; end if;
   select label into table_label from public.physical_tables where id=s.table_id;
   select jsonb_build_object(
     'session_id',s.id,'session_status',s.status,'restaurant_id',r.id,'restaurant_name',r.name,'currency',r.currency,
@@ -475,14 +490,18 @@ alter table public.applied_discounts enable row level security;
 alter table public.customer_requests enable row level security;
 alter table public.payments enable row level security;
 alter table public.audit_logs enable row level security;
+alter table public.owner_payments enable row level security;
 
 create policy profiles_read on public.profiles for select using(id=auth.uid() or public.is_super_admin() or exists(select 1 from public.restaurant_members mine join public.restaurant_members theirs on theirs.restaurant_id=mine.restaurant_id where mine.user_id=auth.uid() and theirs.user_id=profiles.id and mine.active));
 create policy profiles_self_update on public.profiles for update using(id=auth.uid()) with check(id=auth.uid());
 create policy restaurants_read on public.restaurants for select using(public.is_super_admin() or public.has_restaurant_role(id,array['owner','manager','waiter','kitchen','cashier']::public.app_role[]));
 create policy restaurants_owner_update on public.restaurants for update using(public.has_restaurant_role(id,array['owner']::public.app_role[]));
+create policy restaurants_admin_update on public.restaurants for update using(public.is_super_admin()) with check(public.is_super_admin());
+create policy restaurants_admin_delete on public.restaurants for delete using(public.is_super_admin());
 create policy members_read on public.restaurant_members for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','kitchen','cashier']::public.app_role[]));
 create policy members_owner_manage on public.restaurant_members for update using(public.has_restaurant_role(restaurant_id,array['owner','manager']::public.app_role[]));
 create policy invitations_read on public.staff_invitations for select using(public.is_super_admin() or public.has_restaurant_role(restaurant_id,array['owner','manager']::public.app_role[]));
+create policy invitations_admin_update on public.staff_invitations for update using(public.is_super_admin()) with check(public.is_super_admin());
 create policy tables_read on public.physical_tables for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','kitchen','cashier']::public.app_role[]));
 create policy tables_manage on public.physical_tables for all using(public.has_restaurant_role(restaurant_id,array['owner','manager']::public.app_role[])) with check(public.has_restaurant_role(restaurant_id,array['owner','manager']::public.app_role[]));
 create policy sessions_read on public.table_sessions for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','kitchen','cashier']::public.app_role[]));
@@ -499,18 +518,20 @@ create policy requests_read on public.customer_requests for select using(public.
 create policy requests_update on public.customer_requests for update using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','cashier']::public.app_role[]));
 create policy payments_read on public.payments for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','cashier']::public.app_role[]));
 create policy audit_read on public.audit_logs for select using(public.is_super_admin() or public.has_restaurant_role(restaurant_id,array['owner']::public.app_role[]));
+create policy owner_payments_admin on public.owner_payments for all using(public.is_super_admin()) with check(public.is_super_admin());
 
 -- Browser access is still controlled by every row-level security policy above.
 -- Anonymous guests use only the three token-protected functions below.
 revoke all on all tables in schema public from anon;
-grant select,insert,update,delete on public.profiles,public.restaurants,public.restaurant_members,public.staff_invitations,public.physical_tables,public.table_sessions,public.menu_categories,public.menu_items,public.orders,public.order_items,public.discounts,public.applied_discounts,public.customer_requests,public.payments,public.audit_logs to authenticated;
+grant select,insert,update,delete on public.profiles,public.restaurants,public.restaurant_members,public.staff_invitations,public.physical_tables,public.table_sessions,public.menu_categories,public.menu_items,public.orders,public.order_items,public.discounts,public.applied_discounts,public.customer_requests,public.payments,public.audit_logs,public.owner_payments to authenticated;
 grant select on public.receipts to authenticated;
 
 revoke all on function public.get_public_session(uuid) from public;
 revoke all on function public.place_customer_order(uuid,jsonb) from public;
 revoke all on function public.create_customer_request(uuid,public.request_type) from public;
+revoke all on function public.get_public_invitation(uuid) from public;
 revoke all on function public.get_my_context() from public;
-revoke all on function public.create_restaurant_company(text,text,text) from public;
+revoke all on function public.create_restaurant_company(text,text,text,text) from public;
 revoke all on function public.invite_staff(uuid,text,text,public.app_role) from public;
 revoke all on function public.open_table_session(uuid) from public;
 revoke all on function public.set_order_status(uuid,public.order_status,text) from public;
@@ -520,8 +541,9 @@ revoke all on function public.close_table_session(uuid,public.payment_method) fr
 grant execute on function public.get_public_session(uuid) to anon,authenticated;
 grant execute on function public.place_customer_order(uuid,jsonb) to anon,authenticated;
 grant execute on function public.create_customer_request(uuid,public.request_type) to anon,authenticated;
+grant execute on function public.get_public_invitation(uuid) to anon,authenticated;
 grant execute on function public.get_my_context() to authenticated;
-grant execute on function public.create_restaurant_company(text,text,text) to authenticated;
+grant execute on function public.create_restaurant_company(text,text,text,text) to authenticated;
 grant execute on function public.invite_staff(uuid,text,text,public.app_role) to authenticated;
 grant execute on function public.open_table_session(uuid) to authenticated;
 grant execute on function public.set_order_status(uuid,public.order_status,text) to authenticated;
