@@ -2,7 +2,7 @@
   const page=document.body.dataset.auth;
   const form=document.querySelector('form');
   const message=document.getElementById('message');
-  const show=(text,ok=false)=>{message.textContent=text;message.className=ok?'form-success':'form-error'};
+  const show=(text,ok=false)=>{message.textContent=ok?text:dq.friendlyError(text);message.className=ok?'form-success':'form-error'};
   dq.db.auth.getSession().then(({data})=>{if(data.session&&page!=='reset')dq.routeUser()});
   if(page==='login') form.onsubmit=async e=>{e.preventDefault();const b=form.querySelector('button[type=submit]');dq.setBusy(b,true,'Signing in…');message.className='hidden';try{const x=dq.formData(form);const {error}=await dq.db.auth.signInWithPassword({email:x.email,password:x.password});if(error)throw error;await dq.routeUser()}catch(error){show(error.message)}finally{dq.setBusy(b,false)}};
   if(page==='signup'){
