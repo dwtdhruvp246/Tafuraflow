@@ -315,12 +315,24 @@ begin
 end;
 $$;
 
+create or replace function public.admin_set_restaurant_status(target_restaurant uuid, new_active boolean) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_super_admin() then raise exception 'Super Admin access required'; end if;
+  update public.restaurants set active=new_active where id=target_restaurant;
+  if not found then raise exception 'Restaurant company not found'; end if;
+  insert into public.audit_logs(restaurant_id,actor_id,action,entity_type,entity_id,details)
+  values(target_restaurant,auth.uid(),case when new_active then 'restaurant.activated' else 'restaurant.suspended' end,'restaurant',target_restaurant,jsonb_build_object('active',new_active));
+end;
+$$;
+
 create or replace function public.invite_staff(target_restaurant uuid, staff_name text, staff_email text, staff_role public.app_role) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare invite_id uuid; token uuid;
 begin
   if staff_role in ('super_admin','owner') then raise exception 'Invalid staff role'; end if;
   if not public.has_restaurant_role(target_restaurant,array['owner','manager']::public.app_role[]) then raise exception 'Owner or manager access required'; end if;
+  if staff_role='manager' and not public.has_restaurant_role(target_restaurant,array['owner']::public.app_role[]) then raise exception 'Only the owner can invite a manager'; end if;
   if exists(select 1 from public.profiles where lower(email)=lower(trim(staff_email))) then raise exception 'This email already has an account'; end if;
   insert into public.staff_invitations(restaurant_id,email,full_name,role,invited_by)
   values(target_restaurant,lower(trim(staff_email)),trim(staff_name),staff_role,auth.uid()) returning id,invite_token into invite_id,token;
@@ -499,7 +511,9 @@ create policy restaurants_owner_update on public.restaurants for update using(pu
 create policy restaurants_admin_update on public.restaurants for update using(public.is_super_admin()) with check(public.is_super_admin());
 create policy restaurants_admin_delete on public.restaurants for delete using(public.is_super_admin());
 create policy members_read on public.restaurant_members for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','kitchen','cashier']::public.app_role[]));
-create policy members_owner_manage on public.restaurant_members for update using(public.has_restaurant_role(restaurant_id,array['owner','manager']::public.app_role[]));
+create policy members_owner_manage on public.restaurant_members for update
+using(public.has_restaurant_role(restaurant_id,array['owner']::public.app_role[]) or (role not in ('owner','manager') and public.has_restaurant_role(restaurant_id,array['manager']::public.app_role[])))
+with check(public.has_restaurant_role(restaurant_id,array['owner']::public.app_role[]) or (role not in ('owner','manager') and public.has_restaurant_role(restaurant_id,array['manager']::public.app_role[])));
 create policy invitations_read on public.staff_invitations for select using(public.is_super_admin() or public.has_restaurant_role(restaurant_id,array['owner','manager']::public.app_role[]));
 create policy invitations_admin_update on public.staff_invitations for update using(public.is_super_admin()) with check(public.is_super_admin());
 create policy tables_read on public.physical_tables for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','kitchen','cashier']::public.app_role[]));
@@ -525,6 +539,12 @@ create policy owner_payments_admin on public.owner_payments for all using(public
 revoke all on all tables in schema public from anon;
 grant select,insert,update,delete on public.profiles,public.restaurants,public.restaurant_members,public.staff_invitations,public.physical_tables,public.table_sessions,public.menu_categories,public.menu_items,public.orders,public.order_items,public.discounts,public.applied_discounts,public.customer_requests,public.payments,public.audit_logs,public.owner_payments to authenticated;
 grant select on public.receipts to authenticated;
+revoke update on public.profiles,public.restaurants,public.restaurant_members,public.staff_invitations,public.customer_requests from authenticated;
+grant update(full_name,phone) on public.profiles to authenticated;
+grant update(name,tax_percent,service_charge_kind,service_charge_value) on public.restaurants to authenticated;
+grant update(active) on public.restaurant_members to authenticated;
+grant update(phone) on public.staff_invitations to authenticated;
+grant update(status,acknowledged_by,acknowledged_at,resolved_by,resolved_at) on public.customer_requests to authenticated;
 
 revoke all on function public.get_public_session(uuid) from public;
 revoke all on function public.place_customer_order(uuid,jsonb) from public;
@@ -532,6 +552,7 @@ revoke all on function public.create_customer_request(uuid,public.request_type) 
 revoke all on function public.get_public_invitation(uuid) from public;
 revoke all on function public.get_my_context() from public;
 revoke all on function public.create_restaurant_company(text,text,text,text) from public;
+revoke all on function public.admin_set_restaurant_status(uuid,boolean) from public;
 revoke all on function public.invite_staff(uuid,text,text,public.app_role) from public;
 revoke all on function public.open_table_session(uuid) from public;
 revoke all on function public.set_order_status(uuid,public.order_status,text) from public;
@@ -544,6 +565,7 @@ grant execute on function public.create_customer_request(uuid,public.request_typ
 grant execute on function public.get_public_invitation(uuid) to anon,authenticated;
 grant execute on function public.get_my_context() to authenticated;
 grant execute on function public.create_restaurant_company(text,text,text,text) to authenticated;
+grant execute on function public.admin_set_restaurant_status(uuid,boolean) to authenticated;
 grant execute on function public.invite_staff(uuid,text,text,public.app_role) to authenticated;
 grant execute on function public.open_table_session(uuid) to authenticated;
 grant execute on function public.set_order_status(uuid,public.order_status,text) to authenticated;

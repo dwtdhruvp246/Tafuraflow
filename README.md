@@ -38,7 +38,7 @@ where lower(email) = lower('YOUR-EMAIL@example.com');
 
 7. Sign in at `index.html`. You can now add the first company and its owner. DineQR gives you a private invitation link to send to that owner.
 
-If you already ran the earlier DineQR SQL, do not run the complete schema again. Instead, run `supabase/migrations/20260718190000_invites_company_billing.sql` once to add private invitations, company controls, owner phone numbers, and manual owner payments.
+If you already ran the earlier DineQR SQL, do not run the complete schema again. Instead, run `supabase/migrations/20260718190000_invites_company_billing.sql`. The upgrade also repairs workflow permissions and is safe to run again when you receive a newer DineQR package.
 
 If Supabase requires email confirmation, confirm the email before signing in. In **Authentication → URL Configuration**, set the Site URL to your GitHub Pages address, for example `https://dwtdhruvp246.github.io/restaurant-website/`.
 
