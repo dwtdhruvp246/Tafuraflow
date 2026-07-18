@@ -1,38 +1,78 @@
 # DineQR
 
-DineQR is a restaurant ordering platform built around secure, single-session table QR codes.
+DineQR is a plain HTML restaurant ordering and operations website. It works on GitHub Pages without Node.js, npm, Vercel, or a build command.
 
-## Included in this first version
+## What is included
 
-- Super Admin company and owner setup
-- Owner, waiter, kitchen, cashier, and customer views
-- Restaurant branding across every portal
-- Staff-opened table sessions with unique QR codes
-- Waiter-approved customer orders
-- Kitchen order handling
-- Waiter and bill requests
-- Offline payment recording and printable receipts
-- Owner-controlled tax and service charges
-- Supabase schema with restaurant isolation and role-based security policies
+- Super Admin creates restaurant companies and owner invitations
+- Owner, manager, waiter, kitchen, and cashier accounts
+- Company name appears in staff and customer pages
+- Menu categories and items with descriptions and USD prices
+- Staff-created tables and one-time table-session QR codes
+- Customer menu, quantities, cart, repeat ordering, waiter request, and bill request
+- Waiter approval before an order moves to the kitchen
+- Order preparation, ready, served, rejected, and item voiding with a reason
+- Owner-created percentage or fixed-dollar discounts
+- Owner-controlled tax and service charge
+- One final offline payment per table session and printable receipt
+- Closing a table permanently disables that session's QR link
 
-## Run locally
+## The only two setup jobs
 
-1. Install Node.js 22.13 or later.
-2. Run `npm install`.
-3. Copy `.env.example` to `.env.local` and add the Supabase project values.
-4. Run `npm run dev`.
+### 1. Set up Supabase
 
-Use `npm test` to build and run the product-flow checks.
+1. Open your Supabase project.
+2. Click **SQL Editor** and then **New query**.
+3. Open `supabase/migrations/20260718120000_initial_schema.sql` from this project.
+4. Copy the entire SQL file, paste it into Supabase, and click **Run**. Run it once on a new database.
+5. Publish the website, open `signup.html`, and create your own account.
+6. Return to the Supabase SQL Editor and run this, using your real email:
 
-## Publish with GitHub Pages
+```sql
+update public.profiles
+set platform_role = 'super_admin'
+where lower(email) = lower('YOUR-EMAIL@example.com');
+```
 
-1. Upload the complete project to a GitHub repository using the `main` branch.
-2. Open the repository's **Settings → Pages**.
-3. Under **Build and deployment**, select **GitHub Actions** as the source.
-4. Push to `main`, or run **Deploy DineQR to GitHub Pages** from the Actions tab.
+7. Sign in at `index.html`. You can now add the first company and its owner.
 
-The included workflow builds the project and publishes the generated `out/index.html` automatically. It also handles both repository URLs (`username.github.io/repository`) and account URLs (`username.github.io`).
+If Supabase requires email confirmation, confirm the email before signing in. In **Authentication → URL Configuration**, set the Site URL to your GitHub Pages address, for example `https://dwtdhruvp246.github.io/restaurant-website/`.
 
-## Database
+### 2. Upload to GitHub Pages
 
-Apply `supabase/migrations/20260718120000_initial_schema.sql` to the Supabase project. Public customer operations are intentionally expected to use protected server-side functions that validate an active table-session token.
+Upload all of these directly into the top level of the `restaurant-website` repository:
+
+- every `.html` file
+- the complete `assets` folder
+- `README.md`
+- the `supabase` folder (kept there as your database setup backup)
+
+The important point is that `index.html` must be visible on the first repository screen, not placed inside another folder.
+
+Then open **Settings → Pages**, choose **Deploy from a branch**, select the `main` branch and `/ (root)`, and save. No GitHub Action and no Node.js are required.
+
+## What the files do
+
+- `index.html` — staff login page and the page GitHub Pages opens first
+- `signup.html` — account creation for invited owners and staff
+- `forgot-password.html` / `reset-password.html` — password recovery
+- `dashboard.html` — Super Admin or restaurant overview
+- `companies.html` — Super Admin company and owner setup
+- `tables.html` — tables, session opening, QR printing, payments, and final receipts
+- `orders.html` — waiter approval and kitchen order workflow
+- `menu.html` — menu category and item management
+- `staff.html` — staff invitations and access management
+- `finance.html` — receipt history, revenue, and discounts
+- `settings.html` — company name, tax, and service charge
+- `customer.html` — secure customer menu reached by scanning a table QR code
+- `session-ended.html` — shown after the table has closed
+- `waiting.html` — shown when an account has not yet been assigned to a company
+- `assets/styles.css` — all website design and mobile layout
+- `assets/config.js` — the public Supabase URL and anon key
+- `assets/core.js` — shared login, layout, navigation, and helper code
+- `assets/auth.js` — sign-in, sign-up, and password reset logic
+- `assets/app.js` — restaurant and Super Admin functionality
+- `assets/customer.js` — customer menu, cart, ordering, and requests
+- `supabase/migrations/20260718120000_initial_schema.sql` — complete database, permissions, and secure functions
+
+The Supabase anon key in `assets/config.js` is intended to be public. Security is enforced by the SQL row-level security policies. Never put a Supabase service-role key in an HTML or JavaScript file.

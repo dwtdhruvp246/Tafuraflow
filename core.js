@@ -1,0 +1,4 @@
+window.DINEQR_CONFIG = {
+  supabaseUrl: "https://yalfwsqfnzunecnmxajq.supabase.co",
+  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhc2UiLCJyZWYiOiJ5YWxmd3NxZm56dW5lY25teGFqcSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzgxMjY2MDY1LCJleHAiOjIwOTY4NDIwNjV9.277WcudAYbzA5sG4UpFc9ta8_IVDyn0zxnS85Q35Urc"
+};
