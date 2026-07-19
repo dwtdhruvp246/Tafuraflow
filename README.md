@@ -10,7 +10,8 @@ DineQR is a plain HTML restaurant ordering and operations website. It works on G
 - Super Admin can open each company's owner-payment history
 - Owner, manager, waiter, kitchen, and cashier accounts
 - Company name appears in staff and customer pages
-- Menu categories and items with descriptions, USD prices, and uploaded pictures
+- Editable menu categories and items with descriptions, USD prices, and uploaded pictures
+- Owner-controlled category order and item order inside each category
 - Staff-created tables and one-time table-session QR codes
 - Owners and managers can edit/delete tables and view current table orders
 - Customer menu, quantities, cart, repeat ordering, waiter request, and bill request
@@ -46,7 +47,9 @@ If Supabase requires email confirmation, confirm the email before signing in. In
 
 ### 2. Upload to GitHub Pages
 
-Upload all of these directly into the top level of the `restaurant-website` repository:
+The easiest method is to extract `DineQR-Upload-These-Files.zip` and upload **everything inside it** directly into the top level of the `restaurant-website` repository. Replace the older files when GitHub asks.
+
+If you are uploading from the development folder instead, upload all of these:
 
 - every `.html` file
 - the complete `assets` folder
