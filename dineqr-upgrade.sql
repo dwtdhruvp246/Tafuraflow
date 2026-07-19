@@ -4,6 +4,7 @@
 alter table public.profiles add column if not exists phone text;
 alter table public.staff_invitations add column if not exists phone text;
 alter table public.staff_invitations add column if not exists invite_token uuid default gen_random_uuid();
+alter table public.menu_items add column if not exists image_url text;
 update public.staff_invitations set invite_token=gen_random_uuid() where invite_token is null;
 alter table public.staff_invitations alter column invite_token set not null;
 create unique index if not exists staff_invitations_token_unique on public.staff_invitations(invite_token);
@@ -63,7 +64,7 @@ begin
     'session_id',s.id,'session_status',s.status,'restaurant_id',r.id,'restaurant_name',r.name,'currency',r.currency,
     'tax_percent',r.tax_percent,'service_charge_kind',r.service_charge_kind,'service_charge_value',r.service_charge_value,'table_label',table_label,
     'categories',coalesce((select jsonb_agg(jsonb_build_object('id',c.id,'name',c.name,'sort_order',c.sort_order) order by c.sort_order,c.name) from public.menu_categories c where c.restaurant_id=r.id and c.active),'[]'::jsonb),
-    'items',coalesce((select jsonb_agg(jsonb_build_object('id',i.id,'category_id',i.category_id,'name',i.name,'description',i.description,'price',i.price,'sort_order',i.sort_order) order by i.sort_order,i.name) from public.menu_items i where i.restaurant_id=r.id and i.available),'[]'::jsonb)
+    'items',coalesce((select jsonb_agg(jsonb_build_object('id',i.id,'category_id',i.category_id,'name',i.name,'description',i.description,'price',i.price,'image_url',i.image_url,'sort_order',i.sort_order) order by i.sort_order,i.name) from public.menu_items i where i.restaurant_id=r.id and i.available),'[]'::jsonb)
   ) into result;
   return result;
 end;
@@ -145,3 +146,15 @@ grant update(name,tax_percent,service_charge_kind,service_charge_value) on publi
 grant update(active) on public.restaurant_members to authenticated;
 grant update(phone) on public.staff_invitations to authenticated;
 grant update(status,acknowledged_by,acknowledged_at,resolved_by,resolved_at) on public.customer_requests to authenticated;
+
+insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
+values('menu-images','menu-images',true,5242880,array['image/jpeg','image/png','image/webp','image/gif'])
+on conflict(id) do update set public=true,file_size_limit=excluded.file_size_limit,allowed_mime_types=excluded.allowed_mime_types;
+drop policy if exists dineqr_menu_images_public_read on storage.objects;
+create policy dineqr_menu_images_public_read on storage.objects for select using(bucket_id='menu-images');
+drop policy if exists dineqr_menu_images_staff_insert on storage.objects;
+create policy dineqr_menu_images_staff_insert on storage.objects for insert to authenticated with check(bucket_id='menu-images' and exists(select 1 from public.restaurant_members m where m.user_id=auth.uid() and m.active and m.restaurant_id::text=(storage.foldername(name))[1] and m.role in ('owner','manager')));
+drop policy if exists dineqr_menu_images_staff_update on storage.objects;
+create policy dineqr_menu_images_staff_update on storage.objects for update to authenticated using(bucket_id='menu-images' and exists(select 1 from public.restaurant_members m where m.user_id=auth.uid() and m.active and m.restaurant_id::text=(storage.foldername(name))[1] and m.role in ('owner','manager'))) with check(bucket_id='menu-images' and exists(select 1 from public.restaurant_members m where m.user_id=auth.uid() and m.active and m.restaurant_id::text=(storage.foldername(name))[1] and m.role in ('owner','manager')));
+drop policy if exists dineqr_menu_images_staff_delete on storage.objects;
+create policy dineqr_menu_images_staff_delete on storage.objects for delete to authenticated using(bucket_id='menu-images' and exists(select 1 from public.restaurant_members m where m.user_id=auth.uid() and m.active and m.restaurant_id::text=(storage.foldername(name))[1] and m.role in ('owner','manager')));

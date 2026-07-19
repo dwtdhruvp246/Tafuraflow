@@ -7,10 +7,12 @@ DineQR is a plain HTML restaurant ordering and operations website. It works on G
 - Super Admin creates restaurant companies and private owner invitation links
 - Super Admin can edit, suspend, activate, or delete companies
 - Super Admin manually records payments received from restaurant owners
+- Super Admin can open each company's owner-payment history
 - Owner, manager, waiter, kitchen, and cashier accounts
 - Company name appears in staff and customer pages
-- Menu categories and items with descriptions and USD prices
+- Menu categories and items with descriptions, USD prices, and uploaded pictures
 - Staff-created tables and one-time table-session QR codes
+- Owners and managers can edit/delete tables and view current table orders
 - Customer menu, quantities, cart, repeat ordering, waiter request, and bill request
 - Waiter approval before an order moves to the kitchen
 - Order preparation, ready, served, rejected, and item voiding with a reason
