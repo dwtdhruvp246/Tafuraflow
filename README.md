@@ -14,7 +14,7 @@ DineQR is a plain HTML restaurant ordering and operations website. It works on G
 - Owner-controlled category order and item order inside each category
 - Staff-created tables and one-time table-session QR codes
 - Owners and managers can edit/delete tables and view current table orders
-- Customer menu, quantities, cart, repeat ordering, waiter request, and bill request
+- Customer menu, quantities, cart, repeat ordering, current-session order history, waiter request, and bill request
 - Waiter approval before an order moves to the kitchen
 - Order preparation, ready, served, rejected, and item voiding with a reason
 - Owner-created percentage or fixed-dollar discounts
