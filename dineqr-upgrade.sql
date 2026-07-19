@@ -75,6 +75,19 @@ begin
 end;
 $$;
 
+create or replace function public.get_customer_order_history(token uuid) returns jsonb
+language sql stable security definer set search_path = public as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id',o.id,'order_number',o.order_number,'status',o.status,'created_at',o.created_at,'rejection_reason',o.rejection_reason,
+    'total',coalesce((select sum(oi.unit_price_snapshot*oi.quantity) from public.order_items oi where oi.order_id=o.id and oi.voided_at is null),0),
+    'items',coalesce((select jsonb_agg(jsonb_build_object('id',oi.id,'name',oi.item_name_snapshot,'price',oi.unit_price_snapshot,'quantity',oi.quantity,'instructions',oi.special_instructions,'voided',oi.voided_at is not null) order by oi.id) from public.order_items oi where oi.order_id=o.id),'[]'::jsonb)
+  ) order by o.created_at desc),'[]'::jsonb)
+  from public.orders o
+  join public.table_sessions s on s.id=o.session_id
+  join public.restaurants r on r.id=s.restaurant_id and r.active
+  where s.public_token=$1 and s.status in ('open','bill_requested');
+$$;
+
 drop function if exists public.create_restaurant_company(text,text,text);
 create or replace function public.create_restaurant_company(company_name text,owner_name text,owner_email text,owner_phone text) returns jsonb
 language plpgsql security definer set search_path = public as $$
@@ -135,10 +148,12 @@ using(public.has_restaurant_role(restaurant_id,array['owner']::public.app_role[]
 with check(public.has_restaurant_role(restaurant_id,array['owner']::public.app_role[]) or (role not in ('owner','manager') and public.has_restaurant_role(restaurant_id,array['manager']::public.app_role[])));
 
 revoke all on function public.get_public_invitation(uuid) from public;
+revoke all on function public.get_customer_order_history(uuid) from public;
 revoke all on function public.create_restaurant_company(text,text,text,text) from public;
 revoke all on function public.invite_staff(uuid,text,text,public.app_role) from public;
 revoke all on function public.admin_set_restaurant_status(uuid,boolean) from public;
 grant execute on function public.get_public_invitation(uuid) to anon,authenticated;
+grant execute on function public.get_customer_order_history(uuid) to anon,authenticated;
 grant execute on function public.create_restaurant_company(text,text,text,text) to authenticated;
 grant execute on function public.invite_staff(uuid,text,text,public.app_role) to authenticated;
 grant execute on function public.admin_set_restaurant_status(uuid,boolean) to authenticated;

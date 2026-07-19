@@ -379,6 +379,19 @@ begin
 end;
 $$;
 
+create or replace function public.get_customer_order_history(token uuid) returns jsonb
+language sql stable security definer set search_path = public as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id',o.id,'order_number',o.order_number,'status',o.status,'created_at',o.created_at,'rejection_reason',o.rejection_reason,
+    'total',coalesce((select sum(oi.unit_price_snapshot*oi.quantity) from public.order_items oi where oi.order_id=o.id and oi.voided_at is null),0),
+    'items',coalesce((select jsonb_agg(jsonb_build_object('id',oi.id,'name',oi.item_name_snapshot,'price',oi.unit_price_snapshot,'quantity',oi.quantity,'instructions',oi.special_instructions,'voided',oi.voided_at is not null) order by oi.id) from public.order_items oi where oi.order_id=o.id),'[]'::jsonb)
+  ) order by o.created_at desc),'[]'::jsonb)
+  from public.orders o
+  join public.table_sessions s on s.id=o.session_id
+  join public.restaurants r on r.id=s.restaurant_id and r.active
+  where s.public_token=$1 and s.status in ('open','bill_requested');
+$$;
+
 create or replace function public.place_customer_order(token uuid, items jsonb) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare s public.table_sessions%rowtype; order_id uuid; entry jsonb; item public.menu_items%rowtype; qty int; total numeric:=0;
@@ -561,6 +574,7 @@ create policy dineqr_menu_images_staff_update on storage.objects for update to a
 create policy dineqr_menu_images_staff_delete on storage.objects for delete to authenticated using(bucket_id='menu-images' and exists(select 1 from public.restaurant_members m where m.user_id=auth.uid() and m.active and m.restaurant_id::text=(storage.foldername(name))[1] and m.role in ('owner','manager')));
 
 revoke all on function public.get_public_session(uuid) from public;
+revoke all on function public.get_customer_order_history(uuid) from public;
 revoke all on function public.place_customer_order(uuid,jsonb) from public;
 revoke all on function public.create_customer_request(uuid,public.request_type) from public;
 revoke all on function public.get_public_invitation(uuid) from public;
@@ -574,6 +588,7 @@ revoke all on function public.void_order_item(uuid,text) from public;
 revoke all on function public.apply_discount_to_session(uuid,uuid) from public;
 revoke all on function public.close_table_session(uuid,public.payment_method) from public;
 grant execute on function public.get_public_session(uuid) to anon,authenticated;
+grant execute on function public.get_customer_order_history(uuid) to anon,authenticated;
 grant execute on function public.place_customer_order(uuid,jsonb) to anon,authenticated;
 grant execute on function public.create_customer_request(uuid,public.request_type) to anon,authenticated;
 grant execute on function public.get_public_invitation(uuid) to anon,authenticated;
