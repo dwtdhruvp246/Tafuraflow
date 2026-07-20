@@ -5,6 +5,25 @@ alter table public.profiles add column if not exists phone text;
 alter table public.staff_invitations add column if not exists phone text;
 alter table public.staff_invitations add column if not exists invite_token uuid default gen_random_uuid();
 alter table public.menu_items add column if not exists image_url text;
+alter table public.restaurants add column if not exists menu_theme text not null default 'warm';
+alter table public.restaurants add column if not exists menu_accent_color text not null default '#9A4632';
+alter table public.restaurants add column if not exists menu_layout text not null default 'rows';
+alter table public.restaurants add column if not exists menu_tagline text;
+alter table public.restaurants add column if not exists menu_logo_url text;
+alter table public.restaurants add column if not exists menu_hero_url text;
+alter table public.restaurants add column if not exists menu_show_images boolean not null default true;
+do $$ begin
+  alter table public.restaurants add constraint restaurants_menu_theme_check check (menu_theme in ('warm','modern','natural'));
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter table public.restaurants add constraint restaurants_menu_accent_check check (menu_accent_color ~ '^#[0-9A-Fa-f]{6}$');
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter table public.restaurants add constraint restaurants_menu_layout_check check (menu_layout in ('rows','compact','cards'));
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter table public.restaurants add constraint restaurants_menu_tagline_check check (menu_tagline is null or length(menu_tagline) <= 160);
+exception when duplicate_object then null; end $$;
 update public.staff_invitations set invite_token=gen_random_uuid() where invite_token is null;
 alter table public.staff_invitations alter column invite_token set not null;
 create unique index if not exists staff_invitations_token_unique on public.staff_invitations(invite_token);
@@ -63,6 +82,7 @@ begin
   select jsonb_build_object(
     'session_id',s.id,'session_status',s.status,'restaurant_id',r.id,'restaurant_name',r.name,'currency',r.currency,
     'tax_percent',r.tax_percent,'service_charge_kind',r.service_charge_kind,'service_charge_value',r.service_charge_value,'table_label',table_label,
+    'menu_theme',r.menu_theme,'menu_accent_color',r.menu_accent_color,'menu_layout',r.menu_layout,'menu_tagline',r.menu_tagline,'menu_logo_url',r.menu_logo_url,'menu_hero_url',r.menu_hero_url,'menu_show_images',r.menu_show_images,
     'categories',coalesce((select jsonb_agg(jsonb_build_object('id',c.id,'name',c.name,'sort_order',c.sort_order) order by c.sort_order,c.name) from public.menu_categories c where c.restaurant_id=r.id and c.active),'[]'::jsonb),
     'items',coalesce((select jsonb_agg(jsonb_build_object('id',i.id,'category_id',i.category_id,'name',i.name,'description',i.description,'price',i.price,'image_url',i.image_url,'sort_order',i.sort_order) order by i.sort_order,i.name) from public.menu_items i where i.restaurant_id=r.id and i.available),'[]'::jsonb),
     'orders',coalesce((select jsonb_agg(jsonb_build_object(
@@ -162,7 +182,7 @@ grant select,insert,update,delete on public.profiles,public.restaurants,public.r
 grant select on public.receipts to authenticated;
 revoke update on public.profiles,public.restaurants,public.restaurant_members,public.staff_invitations,public.customer_requests from authenticated;
 grant update(full_name,phone) on public.profiles to authenticated;
-grant update(name,tax_percent,service_charge_kind,service_charge_value) on public.restaurants to authenticated;
+grant update(name,tax_percent,service_charge_kind,service_charge_value,menu_theme,menu_accent_color,menu_layout,menu_tagline,menu_logo_url,menu_hero_url,menu_show_images) on public.restaurants to authenticated;
 grant update(active) on public.restaurant_members to authenticated;
 grant update(phone) on public.staff_invitations to authenticated;
 grant update(status,acknowledged_by,acknowledged_at,resolved_by,resolved_at) on public.customer_requests to authenticated;

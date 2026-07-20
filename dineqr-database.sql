@@ -31,6 +31,13 @@ create table public.restaurants (
   tax_percent numeric(6,3),
   service_charge_kind public.charge_kind,
   service_charge_value numeric(12,2),
+  menu_theme text not null default 'warm' check (menu_theme in ('warm','modern','natural')),
+  menu_accent_color text not null default '#9A4632' check (menu_accent_color ~ '^#[0-9A-Fa-f]{6}$'),
+  menu_layout text not null default 'rows' check (menu_layout in ('rows','compact','cards')),
+  menu_tagline text check (menu_tagline is null or length(menu_tagline) <= 160),
+  menu_logo_url text,
+  menu_hero_url text,
+  menu_show_images boolean not null default true,
   active boolean not null default true,
   created_by uuid not null references public.profiles(id),
   created_at timestamptz not null default now(),
@@ -367,6 +374,7 @@ begin
   select jsonb_build_object(
     'session_id',s.id,'session_status',s.status,'restaurant_id',r.id,'restaurant_name',r.name,'currency',r.currency,
     'tax_percent',r.tax_percent,'service_charge_kind',r.service_charge_kind,'service_charge_value',r.service_charge_value,'table_label',table_label,
+    'menu_theme',r.menu_theme,'menu_accent_color',r.menu_accent_color,'menu_layout',r.menu_layout,'menu_tagline',r.menu_tagline,'menu_logo_url',r.menu_logo_url,'menu_hero_url',r.menu_hero_url,'menu_show_images',r.menu_show_images,
     'categories',coalesce((select jsonb_agg(jsonb_build_object('id',c.id,'name',c.name,'sort_order',c.sort_order) order by c.sort_order,c.name) from public.menu_categories c where c.restaurant_id=r.id and c.active),'[]'::jsonb),
     'items',coalesce((select jsonb_agg(jsonb_build_object('id',i.id,'category_id',i.category_id,'name',i.name,'description',i.description,'price',i.price,'image_url',i.image_url,'sort_order',i.sort_order) order by i.sort_order,i.name) from public.menu_items i where i.restaurant_id=r.id and i.available),'[]'::jsonb),
     'orders',coalesce((select jsonb_agg(jsonb_build_object(
@@ -560,7 +568,7 @@ grant select,insert,update,delete on public.profiles,public.restaurants,public.r
 grant select on public.receipts to authenticated;
 revoke update on public.profiles,public.restaurants,public.restaurant_members,public.staff_invitations,public.customer_requests from authenticated;
 grant update(full_name,phone) on public.profiles to authenticated;
-grant update(name,tax_percent,service_charge_kind,service_charge_value) on public.restaurants to authenticated;
+grant update(name,tax_percent,service_charge_kind,service_charge_value,menu_theme,menu_accent_color,menu_layout,menu_tagline,menu_logo_url,menu_hero_url,menu_show_images) on public.restaurants to authenticated;
 grant update(active) on public.restaurant_members to authenticated;
 grant update(phone) on public.staff_invitations to authenticated;
 grant update(status,acknowledged_by,acknowledged_at,resolved_by,resolved_at) on public.customer_requests to authenticated;
