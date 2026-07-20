@@ -1,4 +1,15 @@
-window.DINEQR_CONFIG = {
-  supabaseUrl: "https://yalfwsqfnzunecnmxajq.supabase.co",
-  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhbGZ3c3Fmbnp1bmVjbm14YWpxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNjYwNjUsImV4cCI6MjA5Njg0MjA2NX0.277WcudAYbzA5sG4UpFc9ta8_IVDyn0zxnS85Q35Urc"
-};
+(function(){
+  const page=document.body.dataset.auth;
+  const form=document.querySelector('form');
+  const message=document.getElementById('message');
+  const show=(text,ok=false)=>{message.textContent=ok?text:dq.friendlyError(text);message.className=ok?'form-success':'form-error'};
+  dq.db.auth.getSession().then(({data})=>{if(data.session&&page!=='reset')dq.routeUser()});
+  if(page==='login') form.onsubmit=async e=>{e.preventDefault();const b=form.querySelector('button[type=submit]');dq.setBusy(b,true,'Signing in…');message.className='hidden';try{const x=dq.formData(form);const {error}=await dq.db.auth.signInWithPassword({email:x.email,password:x.password});if(error)throw error;await dq.routeUser()}catch(error){show(error.message)}finally{dq.setBusy(b,false)}};
+  if(page==='signup'){
+    const inviteToken=new URLSearchParams(location.search).get('invite');let invitation=null;
+    (async()=>{try{if(!inviteToken)throw new Error('This page requires a private invitation link.');const {data,error}=await dq.db.rpc('get_public_invitation',{token:inviteToken});if(error)throw error;if(!data)throw new Error('This invitation is invalid, expired, already used, or its company is suspended.');invitation=data;form.full_name.value=data.full_name||'';form.email.value=data.email||'';form.phone.value=data.phone||'';document.getElementById('invite-company').textContent=`You were invited to ${data.company_name} as ${String(data.role).replaceAll('_',' ')}.`;form.querySelector('button[type=submit]').disabled=false}catch(error){show(error.message)}})();
+    form.onsubmit=async e=>{e.preventDefault();const b=form.querySelector('button[type=submit]');dq.setBusy(b,true,'Creating account…');message.className='hidden';try{if(!invitation||!inviteToken)throw new Error('A valid invitation is required.');const x=dq.formData(form);if(x.password.length<8)throw new Error('Use at least 8 characters for your password.');const {data,error}=await dq.db.auth.signUp({email:invitation.email,password:x.password,options:{data:{full_name:invitation.full_name,phone:invitation.phone||'',invitation_token:inviteToken}}});if(error)throw error;if(data.session)await dq.routeUser();else show('Account created. Check your email to confirm it, then sign in.',true)}catch(error){show(error.message)}finally{dq.setBusy(b,false)}};
+  }
+  if(page==='forgot') form.onsubmit=async e=>{e.preventDefault();const b=form.querySelector('button[type=submit]');dq.setBusy(b,true,'Sending…');try{const {email}=dq.formData(form);const target=new URL('reset-password.html',location.href).href;const {error}=await dq.db.auth.resetPasswordForEmail(email,{redirectTo:target});if(error)throw error;show('Password reset email sent. Check your inbox.',true)}catch(error){show(error.message)}finally{dq.setBusy(b,false)}};
+  if(page==='reset') form.onsubmit=async e=>{e.preventDefault();const b=form.querySelector('button[type=submit]');dq.setBusy(b,true,'Updating…');try{const {password}=dq.formData(form);if(password.length<8)throw new Error('Use at least 8 characters.');const {error}=await dq.db.auth.updateUser({password});if(error)throw error;show('Password updated. You can now sign in.',true);setTimeout(()=>location.replace('index.html'),1500)}catch(error){show(error.message)}finally{dq.setBusy(b,false)}};
+})();
