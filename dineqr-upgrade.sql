@@ -1,6 +1,8 @@
 -- DineQR upgrade: private invitation links, owner phone, company controls and owner payments.
 -- Run this after the original DineQR database SQL. This upgrade is safe to run again when a newer website package asks you to repair permissions/functions.
 
+alter type public.app_role add value if not exists 'bar';
+
 alter table public.profiles add column if not exists phone text;
 alter table public.staff_invitations add column if not exists phone text;
 alter table public.staff_invitations add column if not exists invite_token uuid default gen_random_uuid();
@@ -29,6 +31,17 @@ alter table public.restaurants add column if not exists subscription_expires_at 
 alter table public.table_sessions add column if not exists assigned_waiter_id uuid references public.profiles(id);
 alter table public.table_sessions add column if not exists assigned_waiter_name text;
 alter table public.discounts add column if not exists usage_limit integer;
+alter table public.menu_categories add column if not exists preparation_area text not null default 'kitchen';
+alter table public.order_items add column if not exists preparation_area text not null default 'kitchen';
+alter table public.order_items add column if not exists preparation_status text not null default 'pending';
+update public.order_items i set preparation_status=case
+  when o.status='accepted' then 'accepted'
+  when o.status='preparing' then 'accepted'
+  when o.status='ready' then 'ready'
+  when o.status='served' then 'served'
+  when o.status='rejected' then 'rejected'
+  else 'pending' end
+from public.orders o where o.id=i.order_id and i.preparation_status='pending' and o.status<>'pending';
 do $$ begin
   alter table public.restaurants add constraint restaurants_menu_theme_check check (menu_theme in ('warm','modern','natural'));
 exception when duplicate_object then null; end $$;
@@ -50,6 +63,9 @@ do $$ begin
   if not exists(select 1 from pg_constraint where conname='restaurants_menu_hero_style_check') then alter table public.restaurants add constraint restaurants_menu_hero_style_check check(menu_hero_style in ('split','centered','banner')); end if;
   if not exists(select 1 from pg_constraint where conname='restaurants_menu_background_style_check') then alter table public.restaurants add constraint restaurants_menu_background_style_check check(menu_background_style in ('cream','white','natural','paper')); end if;
   if not exists(select 1 from pg_constraint where conname='discounts_usage_limit_check') then alter table public.discounts add constraint discounts_usage_limit_check check(usage_limit is null or usage_limit>0); end if;
+  if not exists(select 1 from pg_constraint where conname='menu_categories_preparation_area_check') then alter table public.menu_categories add constraint menu_categories_preparation_area_check check(preparation_area in ('kitchen','bar')); end if;
+  if not exists(select 1 from pg_constraint where conname='order_items_preparation_area_check') then alter table public.order_items add constraint order_items_preparation_area_check check(preparation_area in ('kitchen','bar')); end if;
+  if not exists(select 1 from pg_constraint where conname='order_items_preparation_status_check') then alter table public.order_items add constraint order_items_preparation_status_check check(preparation_status in ('pending','accepted','preparing','ready','served','rejected')); end if;
 end $$;
 update public.staff_invitations set invite_token=gen_random_uuid() where invite_token is null;
 alter table public.staff_invitations alter column invite_token set not null;
@@ -74,6 +90,15 @@ language sql stable security definer set search_path = public as $$
   select public.is_super_admin() or exists(
     select 1 from public.restaurant_members m join public.restaurants r on r.id=m.restaurant_id
     where m.restaurant_id=target and m.user_id=auth.uid() and m.active and m.role=any(allowed)
+      and r.active and (r.subscription_expires_at is null or r.subscription_expires_at>=current_date)
+  );
+$$;
+
+create or replace function public.has_restaurant_text_role(target uuid, allowed text[]) returns boolean
+language sql stable security definer set search_path = public as $$
+  select public.is_super_admin() or exists(
+    select 1 from public.restaurant_members m join public.restaurants r on r.id=m.restaurant_id
+    where m.restaurant_id=target and m.user_id=auth.uid() and m.active and m.role::text=any(allowed)
       and r.active and (r.subscription_expires_at is null or r.subscription_expires_at>=current_date)
   );
 $$;
@@ -146,6 +171,69 @@ language sql stable security definer set search_path = public as $$
   join public.table_sessions s on s.id=o.session_id
   join public.restaurants r on r.id=s.restaurant_id and r.active and (r.subscription_expires_at is null or r.subscription_expires_at>=current_date)
   where s.public_token=$1 and s.status in ('open','bill_requested');
+$$;
+
+create or replace function public.place_customer_order(token uuid, items jsonb) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare s public.table_sessions%rowtype; order_id uuid; entry jsonb; item public.menu_items%rowtype; qty int; total numeric:=0; prep_area text;
+begin
+  select * into s from public.table_sessions where public_token=token and status='open' for update;
+  if not found then raise exception 'This table session is closed'; end if;
+  if jsonb_typeof(items)<>'array' or jsonb_array_length(items)=0 then raise exception 'The cart is empty'; end if;
+  insert into public.orders(restaurant_id,session_id) values(s.restaurant_id,s.id) returning id into order_id;
+  for entry in select * from jsonb_array_elements(items) loop
+    qty:=coalesce((entry->>'quantity')::int,0);
+    if qty<1 or qty>50 then raise exception 'Invalid quantity'; end if;
+    select * into item from public.menu_items where id=(entry->>'menu_item_id')::uuid and restaurant_id=s.restaurant_id and available;
+    if not found then raise exception 'A menu item is unavailable'; end if;
+    select coalesce(c.preparation_area,'kitchen') into prep_area from public.menu_categories c where c.id=item.category_id;
+    prep_area:=coalesce(prep_area,'kitchen');
+    insert into public.order_items(order_id,menu_item_id,item_name_snapshot,unit_price_snapshot,quantity,special_instructions,preparation_area)
+    values(order_id,item.id,item.name,item.price,qty,nullif(trim(entry->>'instructions'),''),prep_area);
+    total:=total+(item.price*qty);
+  end loop;
+  return jsonb_build_object('order_id',order_id,'total',total,'status','pending');
+end;
+$$;
+
+create or replace function public.set_order_status(target_order uuid, next_status public.order_status, reason text default null) returns void
+language plpgsql security definer set search_path = public as $$
+declare current_order public.orders%rowtype;
+begin
+  select * into current_order from public.orders where id=target_order for update;
+  if not found then raise exception 'Order not found'; end if;
+  if not public.has_restaurant_text_role(current_order.restaurant_id,array['owner','manager','waiter','kitchen','bar']) then raise exception 'Not allowed'; end if;
+  if (current_order.status='pending' or next_status='served') and not public.has_restaurant_text_role(current_order.restaurant_id,array['owner','manager','waiter']) then raise exception 'Service staff access required'; end if;
+  if next_status='rejected' and current_order.status='pending' then
+    update public.orders set status='rejected',rejected_by=auth.uid(),rejected_at=now(),rejection_reason=nullif(trim(reason),'') where id=target_order;
+    update public.order_items set preparation_status='rejected' where order_id=target_order and voided_at is null;
+  elsif next_status='accepted' and current_order.status='pending' then
+    update public.orders set status='accepted',accepted_by=auth.uid(),accepted_at=now() where id=target_order;
+    update public.order_items set preparation_status='accepted' where order_id=target_order and voided_at is null;
+  elsif next_status='preparing' and current_order.status='accepted' then update public.orders set status='preparing' where id=target_order;
+  elsif next_status='ready' and current_order.status='preparing' then update public.orders set status='ready' where id=target_order;
+  elsif next_status='served' and current_order.status='ready' then update public.orders set status='served' where id=target_order; update public.order_items set preparation_status='served' where order_id=target_order and voided_at is null;
+  else raise exception 'Invalid order status change'; end if;
+end;
+$$;
+
+create or replace function public.set_station_order_status(target_order uuid, station text, next_status text) returns void
+language plpgsql security definer set search_path = public as $$
+declare current_order public.orders%rowtype; current_station_status text; all_ready boolean;
+begin
+  if station not in ('kitchen','bar') or next_status not in ('preparing','ready') then raise exception 'Invalid preparation status'; end if;
+  select * into current_order from public.orders where id=target_order for update;
+  if not found then raise exception 'Order not found'; end if;
+  if not public.has_restaurant_text_role(current_order.restaurant_id,array['owner','manager',station]) then raise exception 'Preparation-area access required'; end if;
+  if current_order.status not in ('accepted','preparing') then raise exception 'This order is not ready for preparation'; end if;
+  select min(preparation_status) into current_station_status from public.order_items where order_id=target_order and preparation_area=station and voided_at is null;
+  if current_station_status is null then raise exception 'No items for this preparation area'; end if;
+  if next_status='preparing' and current_station_status<>'accepted' then raise exception 'Items have already started'; end if;
+  if next_status='ready' and exists(select 1 from public.order_items where order_id=target_order and preparation_area=station and voided_at is null and preparation_status<>'preparing') then raise exception 'Start preparing these items first'; end if;
+  update public.order_items set preparation_status=next_status where order_id=target_order and preparation_area=station and voided_at is null;
+  select not exists(select 1 from public.order_items where order_id=target_order and voided_at is null and preparation_status<>'ready') into all_ready;
+  update public.orders set status=case when all_ready then 'ready'::public.order_status else 'preparing'::public.order_status end where id=target_order;
+end;
 $$;
 
 drop function if exists public.create_restaurant_company(text,text,text);
@@ -251,6 +339,29 @@ end;
 $$;
 
 alter table public.owner_payments enable row level security;
+drop policy if exists restaurants_read on public.restaurants;
+create policy restaurants_read on public.restaurants for select using(public.is_super_admin() or public.has_restaurant_text_role(id,array['owner','manager','waiter','kitchen','bar','cashier']));
+drop policy if exists members_read on public.restaurant_members;
+create policy members_read on public.restaurant_members for select using(public.has_restaurant_text_role(restaurant_id,array['owner','manager','waiter','kitchen','bar','cashier']));
+drop policy if exists tables_read on public.physical_tables;
+create policy tables_read on public.physical_tables for select using(public.has_restaurant_text_role(restaurant_id,array['owner','manager','waiter','kitchen','bar','cashier']));
+drop policy if exists tables_manage on public.physical_tables;
+drop policy if exists tables_insert on public.physical_tables;
+create policy tables_insert on public.physical_tables for insert with check(public.has_restaurant_text_role(restaurant_id,array['owner','manager']));
+drop policy if exists tables_owner_update on public.physical_tables;
+create policy tables_owner_update on public.physical_tables for update using(public.has_restaurant_text_role(restaurant_id,array['owner'])) with check(public.has_restaurant_text_role(restaurant_id,array['owner']));
+drop policy if exists tables_owner_delete on public.physical_tables;
+create policy tables_owner_delete on public.physical_tables for delete using(public.has_restaurant_text_role(restaurant_id,array['owner']));
+drop policy if exists sessions_read on public.table_sessions;
+create policy sessions_read on public.table_sessions for select using(public.has_restaurant_text_role(restaurant_id,array['owner','manager','waiter','kitchen','bar','cashier']));
+drop policy if exists categories_read on public.menu_categories;
+create policy categories_read on public.menu_categories for select using(public.has_restaurant_text_role(restaurant_id,array['owner','manager','waiter','kitchen','bar','cashier']));
+drop policy if exists items_read on public.menu_items;
+create policy items_read on public.menu_items for select using(public.has_restaurant_text_role(restaurant_id,array['owner','manager','waiter','kitchen','bar','cashier']));
+drop policy if exists orders_read on public.orders;
+create policy orders_read on public.orders for select using(public.has_restaurant_text_role(restaurant_id,array['owner','manager','waiter','kitchen','bar','cashier']));
+drop policy if exists order_items_read on public.order_items;
+create policy order_items_read on public.order_items for select using(exists(select 1 from public.orders o where o.id=order_id and public.has_restaurant_text_role(o.restaurant_id,array['owner','manager','waiter','kitchen','bar','cashier'])));
 drop policy if exists restaurants_admin_update on public.restaurants;
 create policy restaurants_admin_update on public.restaurants for update using(public.is_super_admin()) with check(public.is_super_admin());
 drop policy if exists restaurants_admin_delete on public.restaurants;
@@ -276,6 +387,8 @@ revoke all on function public.admin_set_restaurant_status(uuid,boolean) from pub
 revoke all on function public.admin_update_restaurant_company(uuid,text,text,text,date) from public;
 revoke all on function public.admin_set_restaurant_expiry(uuid,date) from public;
 revoke all on function public.assign_waiter_to_session(uuid,uuid) from public;
+revoke all on function public.has_restaurant_text_role(uuid,text[]) from public;
+revoke all on function public.set_station_order_status(uuid,text,text) from public;
 grant execute on function public.get_public_invitation(uuid) to anon,authenticated;
 grant execute on function public.get_customer_order_history(uuid) to anon,authenticated;
 grant execute on function public.create_restaurant_company(text,text,text,text) to authenticated;
@@ -284,6 +397,8 @@ grant execute on function public.admin_set_restaurant_status(uuid,boolean) to au
 grant execute on function public.admin_update_restaurant_company(uuid,text,text,text,date) to authenticated;
 grant execute on function public.admin_set_restaurant_expiry(uuid,date) to authenticated;
 grant execute on function public.assign_waiter_to_session(uuid,uuid) to authenticated;
+grant execute on function public.has_restaurant_text_role(uuid,text[]) to authenticated;
+grant execute on function public.set_station_order_status(uuid,text,text) to authenticated;
 grant select,insert,update,delete on public.owner_payments to authenticated;
 grant select,insert,update,delete on public.profiles,public.restaurants,public.restaurant_members,public.staff_invitations,public.physical_tables,public.table_sessions,public.menu_categories,public.menu_items,public.orders,public.order_items,public.discounts,public.applied_discounts,public.customer_requests,public.payments,public.audit_logs to authenticated;
 grant select on public.receipts to authenticated;

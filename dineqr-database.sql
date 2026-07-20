@@ -4,7 +4,7 @@
 
 create extension if not exists pgcrypto;
 
-create type public.app_role as enum ('super_admin', 'owner', 'manager', 'waiter', 'kitchen', 'cashier');
+create type public.app_role as enum ('super_admin', 'owner', 'manager', 'waiter', 'kitchen', 'bar', 'cashier');
 create type public.session_status as enum ('open', 'bill_requested', 'closed');
 create type public.order_status as enum ('pending', 'accepted', 'preparing', 'ready', 'served', 'rejected');
 create type public.request_type as enum ('waiter', 'bill');
@@ -124,8 +124,8 @@ create table public.menu_categories (
   restaurant_id uuid not null references public.restaurants(id) on delete cascade,
   name text not null check (length(trim(name)) between 1 and 80),
   sort_order integer not null default 0,
+  preparation_area text not null default 'kitchen' check (preparation_area in ('kitchen','bar')),
   active boolean not null default true,
-  usage_limit integer check (usage_limit is null or usage_limit > 0),
   unique (restaurant_id, name)
 );
 
@@ -169,6 +169,8 @@ create table public.order_items (
   unit_price_snapshot numeric(12,2) not null check (unit_price_snapshot >= 0),
   quantity integer not null check (quantity between 1 and 100),
   special_instructions text,
+  preparation_area text not null default 'kitchen' check (preparation_area in ('kitchen','bar')),
+  preparation_status text not null default 'pending' check (preparation_status in ('pending','accepted','preparing','ready','served','rejected')),
   voided_at timestamptz,
   voided_by uuid references public.profiles(id),
   void_reason text,
@@ -183,6 +185,7 @@ create table public.discounts (
   kind public.charge_kind not null,
   value numeric(12,2) not null check (value >= 0),
   active boolean not null default true,
+  usage_limit integer check (usage_limit is null or usage_limit > 0),
   created_by uuid not null references public.profiles(id),
   created_at timestamptz not null default now(),
   check (kind <> 'percentage' or value <= 100)
@@ -459,7 +462,7 @@ $$;
 
 create or replace function public.place_customer_order(token uuid, items jsonb) returns jsonb
 language plpgsql security definer set search_path = public as $$
-declare s public.table_sessions%rowtype; order_id uuid; entry jsonb; item public.menu_items%rowtype; qty int; total numeric:=0;
+declare s public.table_sessions%rowtype; order_id uuid; entry jsonb; item public.menu_items%rowtype; qty int; total numeric:=0; prep_area text;
 begin
   select * into s from public.table_sessions where public_token=token and status='open' for update;
   if not found then raise exception 'This table session is closed'; end if;
@@ -470,8 +473,10 @@ begin
     if qty<1 or qty>50 then raise exception 'Invalid quantity'; end if;
     select * into item from public.menu_items where id=(entry->>'menu_item_id')::uuid and restaurant_id=s.restaurant_id and available;
     if not found then raise exception 'A menu item is unavailable'; end if;
-    insert into public.order_items(order_id,menu_item_id,item_name_snapshot,unit_price_snapshot,quantity,special_instructions)
-    values(order_id,item.id,item.name,item.price,qty,nullif(trim(entry->>'instructions'),''));
+    select coalesce(c.preparation_area,'kitchen') into prep_area from public.menu_categories c where c.id=item.category_id;
+    prep_area:=coalesce(prep_area,'kitchen');
+    insert into public.order_items(order_id,menu_item_id,item_name_snapshot,unit_price_snapshot,quantity,special_instructions,preparation_area)
+    values(order_id,item.id,item.name,item.price,qty,nullif(trim(entry->>'instructions'),''),prep_area);
     total:=total+(item.price*qty);
   end loop;
   return jsonb_build_object('order_id',order_id,'total',total,'status','pending');
@@ -500,15 +505,38 @@ declare current_order public.orders%rowtype;
 begin
   select * into current_order from public.orders where id=target_order for update;
   if not found then raise exception 'Order not found'; end if;
-  if not public.has_restaurant_role(current_order.restaurant_id,array['owner','manager','waiter','kitchen']::public.app_role[]) then raise exception 'Not allowed'; end if;
+  if not public.has_restaurant_role(current_order.restaurant_id,array['owner','manager','waiter','kitchen','bar']::public.app_role[]) then raise exception 'Not allowed'; end if;
+  if (current_order.status='pending' or next_status='served') and not public.has_restaurant_role(current_order.restaurant_id,array['owner','manager','waiter']::public.app_role[]) then raise exception 'Service staff access required'; end if;
   if next_status='rejected' and current_order.status='pending' then
     update public.orders set status='rejected',rejected_by=auth.uid(),rejected_at=now(),rejection_reason=nullif(trim(reason),'') where id=target_order;
+    update public.order_items set preparation_status='rejected' where order_id=target_order and voided_at is null;
   elsif next_status='accepted' and current_order.status='pending' then
     update public.orders set status='accepted',accepted_by=auth.uid(),accepted_at=now() where id=target_order;
+    update public.order_items set preparation_status='accepted' where order_id=target_order and voided_at is null;
   elsif next_status='preparing' and current_order.status='accepted' then update public.orders set status='preparing' where id=target_order;
   elsif next_status='ready' and current_order.status='preparing' then update public.orders set status='ready' where id=target_order;
-  elsif next_status='served' and current_order.status='ready' then update public.orders set status='served' where id=target_order;
+  elsif next_status='served' and current_order.status='ready' then update public.orders set status='served' where id=target_order; update public.order_items set preparation_status='served' where order_id=target_order and voided_at is null;
   else raise exception 'Invalid order status change'; end if;
+end;
+$$;
+
+create or replace function public.set_station_order_status(target_order uuid, station text, next_status text) returns void
+language plpgsql security definer set search_path = public as $$
+declare current_order public.orders%rowtype; current_station_status text; all_ready boolean;
+begin
+  if station not in ('kitchen','bar') or next_status not in ('preparing','ready') then raise exception 'Invalid preparation status'; end if;
+  select * into current_order from public.orders where id=target_order for update;
+  if not found then raise exception 'Order not found'; end if;
+  if station='kitchen' and not public.has_restaurant_role(current_order.restaurant_id,array['owner','manager','kitchen']::public.app_role[]) then raise exception 'Kitchen access required'; end if;
+  if station='bar' and not public.has_restaurant_role(current_order.restaurant_id,array['owner','manager','bar']::public.app_role[]) then raise exception 'Bar access required'; end if;
+  if current_order.status not in ('accepted','preparing') then raise exception 'This order is not ready for preparation'; end if;
+  select min(preparation_status) into current_station_status from public.order_items where order_id=target_order and preparation_area=station and voided_at is null;
+  if current_station_status is null then raise exception 'No items for this preparation area'; end if;
+  if next_status='preparing' and current_station_status<>'accepted' then raise exception 'Items have already started'; end if;
+  if next_status='ready' and exists(select 1 from public.order_items where order_id=target_order and preparation_area=station and voided_at is null and preparation_status<>'preparing') then raise exception 'Start preparing these items first'; end if;
+  update public.order_items set preparation_status=next_status where order_id=target_order and preparation_area=station and voided_at is null;
+  select not exists(select 1 from public.order_items where order_id=target_order and voided_at is null and preparation_status<>'ready') into all_ready;
+  update public.orders set status=case when all_ready then 'ready'::public.order_status else 'preparing'::public.order_status end where id=target_order;
 end;
 $$;
 
@@ -593,25 +621,27 @@ alter table public.owner_payments enable row level security;
 
 create policy profiles_read on public.profiles for select using(id=auth.uid() or public.is_super_admin() or exists(select 1 from public.restaurant_members mine join public.restaurant_members theirs on theirs.restaurant_id=mine.restaurant_id where mine.user_id=auth.uid() and theirs.user_id=profiles.id and mine.active));
 create policy profiles_self_update on public.profiles for update using(id=auth.uid()) with check(id=auth.uid());
-create policy restaurants_read on public.restaurants for select using(public.is_super_admin() or public.has_restaurant_role(id,array['owner','manager','waiter','kitchen','cashier']::public.app_role[]));
+create policy restaurants_read on public.restaurants for select using(public.is_super_admin() or public.has_restaurant_role(id,array['owner','manager','waiter','kitchen','bar','cashier']::public.app_role[]));
 create policy restaurants_owner_update on public.restaurants for update using(public.has_restaurant_role(id,array['owner']::public.app_role[]));
 create policy restaurants_admin_update on public.restaurants for update using(public.is_super_admin()) with check(public.is_super_admin());
 create policy restaurants_admin_delete on public.restaurants for delete using(public.is_super_admin());
-create policy members_read on public.restaurant_members for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','kitchen','cashier']::public.app_role[]));
+create policy members_read on public.restaurant_members for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','kitchen','bar','cashier']::public.app_role[]));
 create policy members_owner_manage on public.restaurant_members for update
 using(public.has_restaurant_role(restaurant_id,array['owner']::public.app_role[]) or (role not in ('owner','manager') and public.has_restaurant_role(restaurant_id,array['manager']::public.app_role[])))
 with check(public.has_restaurant_role(restaurant_id,array['owner']::public.app_role[]) or (role not in ('owner','manager') and public.has_restaurant_role(restaurant_id,array['manager']::public.app_role[])));
 create policy invitations_read on public.staff_invitations for select using(public.is_super_admin() or public.has_restaurant_role(restaurant_id,array['owner','manager']::public.app_role[]));
 create policy invitations_admin_update on public.staff_invitations for update using(public.is_super_admin()) with check(public.is_super_admin());
-create policy tables_read on public.physical_tables for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','kitchen','cashier']::public.app_role[]));
-create policy tables_manage on public.physical_tables for all using(public.has_restaurant_role(restaurant_id,array['owner','manager']::public.app_role[])) with check(public.has_restaurant_role(restaurant_id,array['owner','manager']::public.app_role[]));
-create policy sessions_read on public.table_sessions for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','kitchen','cashier']::public.app_role[]));
-create policy categories_read on public.menu_categories for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','kitchen','cashier']::public.app_role[]));
+create policy tables_read on public.physical_tables for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','kitchen','bar','cashier']::public.app_role[]));
+create policy tables_insert on public.physical_tables for insert with check(public.has_restaurant_role(restaurant_id,array['owner','manager']::public.app_role[]));
+create policy tables_owner_update on public.physical_tables for update using(public.has_restaurant_role(restaurant_id,array['owner']::public.app_role[])) with check(public.has_restaurant_role(restaurant_id,array['owner']::public.app_role[]));
+create policy tables_owner_delete on public.physical_tables for delete using(public.has_restaurant_role(restaurant_id,array['owner']::public.app_role[]));
+create policy sessions_read on public.table_sessions for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','kitchen','bar','cashier']::public.app_role[]));
+create policy categories_read on public.menu_categories for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','kitchen','bar','cashier']::public.app_role[]));
 create policy categories_manage on public.menu_categories for all using(public.has_restaurant_role(restaurant_id,array['owner','manager']::public.app_role[])) with check(public.has_restaurant_role(restaurant_id,array['owner','manager']::public.app_role[]));
-create policy items_read on public.menu_items for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','kitchen','cashier']::public.app_role[]));
+create policy items_read on public.menu_items for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','kitchen','bar','cashier']::public.app_role[]));
 create policy items_manage on public.menu_items for all using(public.has_restaurant_role(restaurant_id,array['owner','manager']::public.app_role[])) with check(public.has_restaurant_role(restaurant_id,array['owner','manager']::public.app_role[]));
-create policy orders_read on public.orders for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','kitchen','cashier']::public.app_role[]));
-create policy order_items_read on public.order_items for select using(exists(select 1 from public.orders o where o.id=order_id and public.has_restaurant_role(o.restaurant_id,array['owner','manager','waiter','kitchen','cashier']::public.app_role[])));
+create policy orders_read on public.orders for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','kitchen','bar','cashier']::public.app_role[]));
+create policy order_items_read on public.order_items for select using(exists(select 1 from public.orders o where o.id=order_id and public.has_restaurant_role(o.restaurant_id,array['owner','manager','waiter','kitchen','bar','cashier']::public.app_role[])));
 create policy discounts_read on public.discounts for select using(public.has_restaurant_role(restaurant_id,array['owner','manager','waiter','cashier']::public.app_role[]));
 create policy discounts_manage on public.discounts for all using(public.has_restaurant_role(restaurant_id,array['owner']::public.app_role[])) with check(public.has_restaurant_role(restaurant_id,array['owner']::public.app_role[]));
 create policy applied_discounts_read on public.applied_discounts for select using(exists(select 1 from public.table_sessions s where s.id=session_id and public.has_restaurant_role(s.restaurant_id,array['owner','manager','waiter','cashier']::public.app_role[])));
@@ -655,6 +685,7 @@ revoke all on function public.assign_waiter_to_session(uuid,uuid) from public;
 revoke all on function public.invite_staff(uuid,text,text,text,public.app_role) from public;
 revoke all on function public.open_table_session(uuid) from public;
 revoke all on function public.set_order_status(uuid,public.order_status,text) from public;
+revoke all on function public.set_station_order_status(uuid,text,text) from public;
 revoke all on function public.void_order_item(uuid,text) from public;
 revoke all on function public.apply_discount_to_session(uuid,uuid) from public;
 revoke all on function public.close_table_session(uuid,public.payment_method) from public;
@@ -672,6 +703,7 @@ grant execute on function public.assign_waiter_to_session(uuid,uuid) to authenti
 grant execute on function public.invite_staff(uuid,text,text,text,public.app_role) to authenticated;
 grant execute on function public.open_table_session(uuid) to authenticated;
 grant execute on function public.set_order_status(uuid,public.order_status,text) to authenticated;
+grant execute on function public.set_station_order_status(uuid,text,text) to authenticated;
 grant execute on function public.void_order_item(uuid,text) to authenticated;
 grant execute on function public.apply_discount_to_session(uuid,uuid) to authenticated;
 grant execute on function public.close_table_session(uuid,public.payment_method) to authenticated;

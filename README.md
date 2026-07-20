@@ -8,15 +8,16 @@ DineQR is a plain HTML restaurant ordering and operations website. It works on G
 - Super Admin can edit company and owner details, suspend, activate, expire, or delete companies
 - Super Admin manually records and edits payments received from restaurant owners, including the paid access expiry date
 - Super Admin can open each company's owner-payment history
-- Owner, manager, waiter, kitchen, and cashier accounts
+- Owner, manager, waiter, kitchen, bar, and cashier accounts
 - Company name appears in staff and customer pages
 - Editable menu categories and items with descriptions, USD prices, and uploaded pictures
-- Owner-controlled category order and item order inside each category
+- Owner-controlled category order and item order inside each category, with each category routed to the kitchen or bar
 - Restaurant-specific customer-menu themes, colors, fonts, headers, category navigation, item cards, image shapes, hero layouts, backgrounds, branding, contact details, and visibility controls
 - Staff-created tables and one-time table-session QR codes
 - Owners and managers can edit/delete tables and view current table orders
 - Customer menu, quantities, cart, repeat ordering, current-session order history, waiter request, and bill request
-- Waiter approval before an order moves to the kitchen, waiter assignment, and fulfilled-order details
+- Waiter approval before preparation, independent kitchen/bar item progress, waiter assignment, and fulfilled-order details
+- Dedicated kitchen and bar live-order screens plus preparation-area order history
 - Order preparation, ready, served, rejected, and item voiding with a reason
 - Owner-created percentage or fixed-dollar discounts with optional usage limits and remaining-use tracking
 - Owner-controlled tax and service charge
@@ -71,6 +72,8 @@ Then open **Settings → Pages**, choose **Deploy from a branch**, select the `m
 - `admin-finance.html` — Super Admin manual restaurant-owner payment records
 - `tables.html` — tables, session opening, QR printing, payments, and final receipts
 - `orders.html` — waiter approval and kitchen order workflow
+- `bar-orders.html` — live drink orders routed to the bar account
+- `order-history.html` — previous kitchen or bar orders with full details
 - `menu.html` — menu category and item management
 - `staff.html` — staff invitations and access management
 - `finance.html` — receipt history, revenue, and discounts
