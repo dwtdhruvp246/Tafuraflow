@@ -38,6 +38,20 @@ create table public.restaurants (
   menu_logo_url text,
   menu_hero_url text,
   menu_show_images boolean not null default true,
+  menu_font_style text not null default 'editorial' check (menu_font_style in ('editorial','modern','classic','friendly')),
+  menu_header_style text not null default 'light' check (menu_header_style in ('light','accent','dark')),
+  menu_category_style text not null default 'pills' check (menu_category_style in ('pills','underline','blocks')),
+  menu_card_style text not null default 'soft' check (menu_card_style in ('soft','outline','minimal')),
+  menu_image_shape text not null default 'rounded' check (menu_image_shape in ('rounded','square','circle')),
+  menu_hero_style text not null default 'split' check (menu_hero_style in ('split','centered','banner')),
+  menu_background_style text not null default 'cream' check (menu_background_style in ('cream','white','natural','paper')),
+  menu_show_hero boolean not null default true,
+  menu_show_descriptions boolean not null default true,
+  menu_address text,
+  menu_phone text,
+  menu_hours text,
+  menu_social_url text,
+  subscription_expires_at date,
   active boolean not null default true,
   created_by uuid not null references public.profiles(id),
   created_at timestamptz not null default now(),
@@ -90,6 +104,8 @@ create table public.table_sessions (
   public_token uuid not null unique default gen_random_uuid(),
   status public.session_status not null default 'open',
   opened_by uuid not null references public.profiles(id),
+  assigned_waiter_id uuid references public.profiles(id),
+  assigned_waiter_name text,
   opened_at timestamptz not null default now(),
   closed_by uuid references public.profiles(id),
   closed_at timestamptz,
@@ -109,6 +125,7 @@ create table public.menu_categories (
   name text not null check (length(trim(name)) between 1 and 80),
   sort_order integer not null default 0,
   active boolean not null default true,
+  usage_limit integer check (usage_limit is null or usage_limit > 0),
   unique (restaurant_id, name)
 );
 
@@ -225,6 +242,7 @@ create table public.owner_payments (
   payment_date date not null default current_date,
   method public.payment_method not null,
   notes text,
+  access_expires_on date,
   recorded_by uuid not null references public.profiles(id),
   created_at timestamptz not null default now()
 );
@@ -247,8 +265,9 @@ $$;
 create or replace function public.has_restaurant_role(target uuid, allowed public.app_role[]) returns boolean
 language sql stable security definer set search_path = public as $$
   select public.is_super_admin() or exists(
-    select 1 from public.restaurant_members
-    where restaurant_id = target and user_id = auth.uid() and active and role = any(allowed)
+    select 1 from public.restaurant_members m join public.restaurants r on r.id=m.restaurant_id
+    where m.restaurant_id = target and m.user_id = auth.uid() and m.active and m.role = any(allowed)
+      and r.active and (r.subscription_expires_at is null or r.subscription_expires_at >= current_date)
   );
 $$;
 
@@ -270,6 +289,7 @@ begin
     insert into public.restaurant_members(restaurant_id,user_id,role)
     values(invite.restaurant_id,new.id,invite.role)
     on conflict(restaurant_id,user_id) do update set role=excluded.role,active=true;
+    update public.profiles set full_name=invite.full_name,phone=coalesce(invite.phone,phone) where id=new.id;
     update public.staff_invitations set accepted_at=now() where id=invite.id;
   end if;
   return new;
@@ -334,7 +354,43 @@ begin
 end;
 $$;
 
-create or replace function public.invite_staff(target_restaurant uuid, staff_name text, staff_email text, staff_role public.app_role) returns jsonb
+create or replace function public.admin_update_restaurant_company(target_restaurant uuid, company_name text, owner_name text, owner_phone text, expiry_date date) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_super_admin() then raise exception 'Super Admin access required'; end if;
+  if length(trim(company_name))<2 or length(trim(owner_name))<2 then raise exception 'Company and owner names are required'; end if;
+  update public.restaurants set name=trim(company_name),subscription_expires_at=expiry_date where id=target_restaurant;
+  if not found then raise exception 'Restaurant company not found'; end if;
+  update public.staff_invitations set full_name=trim(owner_name),phone=nullif(trim(owner_phone),'') where restaurant_id=target_restaurant and role='owner';
+  update public.profiles p set full_name=trim(owner_name),phone=nullif(trim(owner_phone),'')
+  from public.restaurant_members m where m.user_id=p.id and m.restaurant_id=target_restaurant and m.role='owner';
+end;
+$$;
+
+create or replace function public.admin_set_restaurant_expiry(target_restaurant uuid, expiry_date date) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_super_admin() then raise exception 'Super Admin access required'; end if;
+  update public.restaurants set subscription_expires_at=expiry_date where id=target_restaurant;
+  if not found then raise exception 'Restaurant company not found'; end if;
+end;
+$$;
+
+create or replace function public.assign_waiter_to_session(target_session uuid, target_waiter uuid) returns void
+language plpgsql security definer set search_path = public as $$
+declare session_row public.table_sessions%rowtype; waiter_name text;
+begin
+  select * into session_row from public.table_sessions where id=target_session and status<>'closed';
+  if not found then raise exception 'Open session not found'; end if;
+  if not public.has_restaurant_role(session_row.restaurant_id,array['owner','manager']::public.app_role[]) then raise exception 'Owner or manager access required'; end if;
+  select p.full_name into waiter_name from public.restaurant_members m join public.profiles p on p.id=m.user_id
+  where m.restaurant_id=session_row.restaurant_id and m.user_id=target_waiter and m.role='waiter' and m.active;
+  if waiter_name is null then raise exception 'Active waiter not found'; end if;
+  update public.table_sessions set assigned_waiter_id=target_waiter,assigned_waiter_name=waiter_name where id=target_session;
+end;
+$$;
+
+create or replace function public.invite_staff(target_restaurant uuid, staff_name text, staff_email text, staff_phone text, staff_role public.app_role) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare invite_id uuid; token uuid;
 begin
@@ -342,8 +398,8 @@ begin
   if not public.has_restaurant_role(target_restaurant,array['owner','manager']::public.app_role[]) then raise exception 'Owner or manager access required'; end if;
   if staff_role='manager' and not public.has_restaurant_role(target_restaurant,array['owner']::public.app_role[]) then raise exception 'Only the owner can invite a manager'; end if;
   if exists(select 1 from public.profiles where lower(email)=lower(trim(staff_email))) then raise exception 'This email already has an account'; end if;
-  insert into public.staff_invitations(restaurant_id,email,full_name,role,invited_by)
-  values(target_restaurant,lower(trim(staff_email)),trim(staff_name),staff_role,auth.uid()) returning id,invite_token into invite_id,token;
+  insert into public.staff_invitations(restaurant_id,email,full_name,phone,role,invited_by)
+  values(target_restaurant,lower(trim(staff_email)),trim(staff_name),nullif(trim(staff_phone),''),staff_role,auth.uid()) returning id,invite_token into invite_id,token;
   return jsonb_build_object('invitation_id',invite_id,'invite_token',token,'email',lower(trim(staff_email)));
 end;
 $$;
@@ -368,13 +424,14 @@ declare s public.table_sessions%rowtype; r public.restaurants%rowtype; table_lab
 begin
   select * into s from public.table_sessions where public_token=token and status in ('open','bill_requested');
   if not found then return null; end if;
-  select * into r from public.restaurants where id=s.restaurant_id and active;
+  select * into r from public.restaurants where id=s.restaurant_id and active and (subscription_expires_at is null or subscription_expires_at>=current_date);
   if not found then return null; end if;
   select label into table_label from public.physical_tables where id=s.table_id;
   select jsonb_build_object(
     'session_id',s.id,'session_status',s.status,'restaurant_id',r.id,'restaurant_name',r.name,'currency',r.currency,
     'tax_percent',r.tax_percent,'service_charge_kind',r.service_charge_kind,'service_charge_value',r.service_charge_value,'table_label',table_label,
     'menu_theme',r.menu_theme,'menu_accent_color',r.menu_accent_color,'menu_layout',r.menu_layout,'menu_tagline',r.menu_tagline,'menu_logo_url',r.menu_logo_url,'menu_hero_url',r.menu_hero_url,'menu_show_images',r.menu_show_images,
+    'menu_font_style',r.menu_font_style,'menu_header_style',r.menu_header_style,'menu_category_style',r.menu_category_style,'menu_card_style',r.menu_card_style,'menu_image_shape',r.menu_image_shape,'menu_hero_style',r.menu_hero_style,'menu_background_style',r.menu_background_style,'menu_show_hero',r.menu_show_hero,'menu_show_descriptions',r.menu_show_descriptions,'menu_address',r.menu_address,'menu_phone',r.menu_phone,'menu_hours',r.menu_hours,'menu_social_url',r.menu_social_url,
     'categories',coalesce((select jsonb_agg(jsonb_build_object('id',c.id,'name',c.name,'sort_order',c.sort_order) order by c.sort_order,c.name) from public.menu_categories c where c.restaurant_id=r.id and c.active),'[]'::jsonb),
     'items',coalesce((select jsonb_agg(jsonb_build_object('id',i.id,'category_id',i.category_id,'name',i.name,'description',i.description,'price',i.price,'image_url',i.image_url,'sort_order',i.sort_order) order by i.sort_order,i.name) from public.menu_items i where i.restaurant_id=r.id and i.available),'[]'::jsonb),
     'orders',coalesce((select jsonb_agg(jsonb_build_object(
@@ -396,7 +453,7 @@ language sql stable security definer set search_path = public as $$
   ) order by o.created_at desc),'[]'::jsonb)
   from public.orders o
   join public.table_sessions s on s.id=o.session_id
-  join public.restaurants r on r.id=s.restaurant_id and r.active
+  join public.restaurants r on r.id=s.restaurant_id and r.active and (r.subscription_expires_at is null or r.subscription_expires_at>=current_date)
   where s.public_token=$1 and s.status in ('open','bill_requested');
 $$;
 
@@ -468,11 +525,14 @@ $$;
 
 create or replace function public.apply_discount_to_session(target_session uuid, target_discount uuid) returns numeric
 language plpgsql security definer set search_path = public as $$
-declare s public.table_sessions%rowtype; d public.discounts%rowtype; subtotal numeric; amount numeric;
+declare s public.table_sessions%rowtype; d public.discounts%rowtype; subtotal numeric; amount numeric; used_count integer;
 begin
   select * into s from public.table_sessions where id=target_session and status<>'closed';
   select * into d from public.discounts where id=target_discount and restaurant_id=s.restaurant_id and active;
+  if d.id is null then raise exception 'Discount is unavailable'; end if;
   if not public.has_restaurant_role(s.restaurant_id,array['owner','manager','waiter','cashier']::public.app_role[]) then raise exception 'Not allowed'; end if;
+  select count(*) into used_count from public.applied_discounts where discount_id=d.id;
+  if d.usage_limit is not null and used_count>=d.usage_limit and not exists(select 1 from public.applied_discounts where session_id=s.id and discount_id=d.id) then raise exception 'Discount usage limit reached'; end if;
   select coalesce(sum(i.unit_price_snapshot*i.quantity),0) into subtotal from public.orders o join public.order_items i on i.order_id=o.id where o.session_id=s.id and o.status not in ('pending','rejected') and i.voided_at is null;
   amount:=case when d.kind='percentage' then round(subtotal*d.value/100,2) else least(d.value,subtotal) end;
   insert into public.applied_discounts(session_id,discount_id,name_snapshot,amount_snapshot,applied_by)
@@ -511,7 +571,7 @@ end;
 $$;
 
 create view public.receipts with (security_invoker=true) as
-select s.id,s.restaurant_id,s.table_id,t.label as table_label,s.opened_at,s.closed_at,s.subtotal_snapshot,s.discount_snapshot,s.tax_snapshot,s.service_snapshot,s.total_snapshot,p.method as payment_method,p.recorded_at
+select s.id,s.restaurant_id,s.table_id,t.label as table_label,s.opened_at,s.closed_at,s.subtotal_snapshot,s.discount_snapshot,s.tax_snapshot,s.service_snapshot,s.total_snapshot,p.method as payment_method,p.recorded_at,s.assigned_waiter_id,s.assigned_waiter_name
 from public.table_sessions s join public.physical_tables t on t.id=s.table_id left join public.payments p on p.session_id=s.id where s.status='closed';
 
 alter table public.profiles enable row level security;
@@ -568,7 +628,7 @@ grant select,insert,update,delete on public.profiles,public.restaurants,public.r
 grant select on public.receipts to authenticated;
 revoke update on public.profiles,public.restaurants,public.restaurant_members,public.staff_invitations,public.customer_requests from authenticated;
 grant update(full_name,phone) on public.profiles to authenticated;
-grant update(name,tax_percent,service_charge_kind,service_charge_value,menu_theme,menu_accent_color,menu_layout,menu_tagline,menu_logo_url,menu_hero_url,menu_show_images) on public.restaurants to authenticated;
+grant update(tax_percent,service_charge_kind,service_charge_value,menu_theme,menu_accent_color,menu_layout,menu_tagline,menu_logo_url,menu_hero_url,menu_show_images,menu_font_style,menu_header_style,menu_category_style,menu_card_style,menu_image_shape,menu_hero_style,menu_background_style,menu_show_hero,menu_show_descriptions,menu_address,menu_phone,menu_hours,menu_social_url) on public.restaurants to authenticated;
 grant update(active) on public.restaurant_members to authenticated;
 grant update(phone) on public.staff_invitations to authenticated;
 grant update(status,acknowledged_by,acknowledged_at,resolved_by,resolved_at) on public.customer_requests to authenticated;
@@ -589,7 +649,10 @@ revoke all on function public.get_public_invitation(uuid) from public;
 revoke all on function public.get_my_context() from public;
 revoke all on function public.create_restaurant_company(text,text,text,text) from public;
 revoke all on function public.admin_set_restaurant_status(uuid,boolean) from public;
-revoke all on function public.invite_staff(uuid,text,text,public.app_role) from public;
+revoke all on function public.admin_update_restaurant_company(uuid,text,text,text,date) from public;
+revoke all on function public.admin_set_restaurant_expiry(uuid,date) from public;
+revoke all on function public.assign_waiter_to_session(uuid,uuid) from public;
+revoke all on function public.invite_staff(uuid,text,text,text,public.app_role) from public;
 revoke all on function public.open_table_session(uuid) from public;
 revoke all on function public.set_order_status(uuid,public.order_status,text) from public;
 revoke all on function public.void_order_item(uuid,text) from public;
@@ -603,7 +666,10 @@ grant execute on function public.get_public_invitation(uuid) to anon,authenticat
 grant execute on function public.get_my_context() to authenticated;
 grant execute on function public.create_restaurant_company(text,text,text,text) to authenticated;
 grant execute on function public.admin_set_restaurant_status(uuid,boolean) to authenticated;
-grant execute on function public.invite_staff(uuid,text,text,public.app_role) to authenticated;
+grant execute on function public.admin_update_restaurant_company(uuid,text,text,text,date) to authenticated;
+grant execute on function public.admin_set_restaurant_expiry(uuid,date) to authenticated;
+grant execute on function public.assign_waiter_to_session(uuid,uuid) to authenticated;
+grant execute on function public.invite_staff(uuid,text,text,text,public.app_role) to authenticated;
 grant execute on function public.open_table_session(uuid) to authenticated;
 grant execute on function public.set_order_status(uuid,public.order_status,text) to authenticated;
 grant execute on function public.void_order_item(uuid,text) to authenticated;

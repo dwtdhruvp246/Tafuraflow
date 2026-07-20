@@ -5,22 +5,22 @@ DineQR is a plain HTML restaurant ordering and operations website. It works on G
 ## What is included
 
 - Super Admin creates restaurant companies and private owner invitation links
-- Super Admin can edit, suspend, activate, or delete companies
-- Super Admin manually records payments received from restaurant owners
+- Super Admin can edit company and owner details, suspend, activate, expire, or delete companies
+- Super Admin manually records and edits payments received from restaurant owners, including the paid access expiry date
 - Super Admin can open each company's owner-payment history
 - Owner, manager, waiter, kitchen, and cashier accounts
 - Company name appears in staff and customer pages
 - Editable menu categories and items with descriptions, USD prices, and uploaded pictures
 - Owner-controlled category order and item order inside each category
-- Restaurant-specific customer-menu themes, accent color, tagline, logo, cover image, layout, and image visibility
+- Restaurant-specific customer-menu themes, colors, fonts, headers, category navigation, item cards, image shapes, hero layouts, backgrounds, branding, contact details, and visibility controls
 - Staff-created tables and one-time table-session QR codes
 - Owners and managers can edit/delete tables and view current table orders
 - Customer menu, quantities, cart, repeat ordering, current-session order history, waiter request, and bill request
-- Waiter approval before an order moves to the kitchen
+- Waiter approval before an order moves to the kitchen, waiter assignment, and fulfilled-order details
 - Order preparation, ready, served, rejected, and item voiding with a reason
-- Owner-created percentage or fixed-dollar discounts
+- Owner-created percentage or fixed-dollar discounts with optional usage limits and remaining-use tracking
 - Owner-controlled tax and service charge
-- One final offline payment per table session and printable receipt
+- One final offline payment per table session and detailed printable receipt with the assigned waiter
 - Closing a table permanently disables that session's QR link
 
 ## The only two setup jobs
@@ -74,7 +74,7 @@ Then open **Settings → Pages**, choose **Deploy from a branch**, select the `m
 - `menu.html` — menu category and item management
 - `staff.html` — staff invitations and access management
 - `finance.html` — receipt history, revenue, and discounts
-- `settings.html` — company name, tax, service charge, and customer-menu appearance
+- `settings.html` — owner-controlled tax, service charge, and advanced customer-menu appearance (company name is Super Admin controlled)
 - `customer.html` — secure customer menu reached by scanning a table QR code
 - `session-ended.html` — shown after the table has closed
 - `waiting.html` — shown when an account has not yet been assigned to a company
