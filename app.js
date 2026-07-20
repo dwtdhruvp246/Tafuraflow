@@ -109,5 +109,5 @@
 
     const handlers={dashboard,companies,'admin-finance':adminFinance,tables,orders,menu,staff,finance,settings};await handlers[page]();
     if(page==='orders')dq.db.channel('live-orders').on('postgres_changes',{event:'*',schema:'public',table:'orders',filter:`restaurant_id=eq.${rid}`},()=>{clearTimeout(window.__orderRefresh);window.__orderRefresh=setTimeout(orders,300)}).subscribe();
-  }catch(error){console.error(error);const app=document.getElementById('app');app.className='expired';app.innerHTML=`<div class="card"><h1>Something needs attention</h1><p class="muted">${dq.esc(dq.friendlyError(error))}</p><a class="btn" href="index.html">Back to sign in</a></div>`}
+  }catch(error){console.error(error);const app=document.getElementById('app'),message=dq.friendlyError(error),suspended=message.toLowerCase().includes('suspended');app.className='expired';app.innerHTML=`<div class="card account-state-card"><div class="account-state-icon" aria-hidden="true">${suspended?'!':'i'}</div><h1>${suspended?'Restaurant account suspended':'Something needs attention'}</h1><p class="muted">${dq.esc(message)}</p>${suspended?'<button class="btn" id="suspended-signout">Sign out</button>':'<a class="btn" href="index.html">Back to sign in</a>'}</div>`;document.getElementById('suspended-signout')?.addEventListener('click',dq.signOut)}
 })();
