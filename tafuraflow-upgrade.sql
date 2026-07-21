@@ -319,6 +319,23 @@ begin
 end;
 $$;
 
+create or replace function public.resolve_customer_request(target_request uuid) returns void
+language plpgsql security definer set search_path = public as $$
+declare request_row public.customer_requests%rowtype;
+begin
+  select * into request_row from public.customer_requests where id=target_request for update;
+  if not found then raise exception 'Guest request not found'; end if;
+  if not public.has_restaurant_text_role(request_row.restaurant_id,array['owner','manager','waiter','cashier']) then raise exception 'Not allowed'; end if;
+  update public.customer_requests set status='resolved',acknowledged_by=coalesce(acknowledged_by,auth.uid()),acknowledged_at=coalesce(acknowledged_at,now()),resolved_by=auth.uid(),resolved_at=now() where id=target_request;
+  if request_row.type='bill' then update public.table_sessions set status='open' where id=request_row.session_id and status='bill_requested'; end if;
+end;
+$$;
+
+-- Convert alerts dismissed by the earlier website version into resolved requests.
+update public.customer_requests
+set status='resolved',resolved_by=coalesce(resolved_by,acknowledged_by),resolved_at=coalesce(resolved_at,acknowledged_at,now())
+where status='open' and acknowledged_at is not null;
+
 create or replace function public.apply_discount_to_session(target_session uuid, target_discount uuid) returns numeric
 language plpgsql security definer set search_path = public as $$
 declare s public.table_sessions%rowtype; d public.discounts%rowtype; subtotal numeric; amount numeric; used_count integer;
@@ -404,6 +421,7 @@ revoke all on function public.admin_set_restaurant_status(uuid,boolean) from pub
 revoke all on function public.admin_update_restaurant_company(uuid,text,text,text,date) from public;
 revoke all on function public.admin_set_restaurant_expiry(uuid,date) from public;
 revoke all on function public.assign_waiter_to_session(uuid,uuid) from public;
+revoke all on function public.resolve_customer_request(uuid) from public;
 revoke all on function public.has_restaurant_text_role(uuid,text[]) from public;
 revoke all on function public.set_station_order_status(uuid,text,text) from public;
 grant execute on function public.get_public_invitation(uuid) to anon,authenticated;
@@ -414,6 +432,7 @@ grant execute on function public.admin_set_restaurant_status(uuid,boolean) to au
 grant execute on function public.admin_update_restaurant_company(uuid,text,text,text,date) to authenticated;
 grant execute on function public.admin_set_restaurant_expiry(uuid,date) to authenticated;
 grant execute on function public.assign_waiter_to_session(uuid,uuid) to authenticated;
+grant execute on function public.resolve_customer_request(uuid) to authenticated;
 grant execute on function public.has_restaurant_text_role(uuid,text[]) to authenticated;
 grant execute on function public.set_station_order_status(uuid,text,text) to authenticated;
 grant select,insert,update,delete on public.owner_payments to authenticated;

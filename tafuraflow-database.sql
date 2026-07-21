@@ -502,6 +502,18 @@ begin
 end;
 $$;
 
+create or replace function public.resolve_customer_request(target_request uuid) returns void
+language plpgsql security definer set search_path = public as $$
+declare request_row public.customer_requests%rowtype;
+begin
+  select * into request_row from public.customer_requests where id=target_request for update;
+  if not found then raise exception 'Guest request not found'; end if;
+  if not public.has_restaurant_role(request_row.restaurant_id,array['owner','manager','waiter','cashier']::public.app_role[]) then raise exception 'Not allowed'; end if;
+  update public.customer_requests set status='resolved',acknowledged_by=coalesce(acknowledged_by,auth.uid()),acknowledged_at=coalesce(acknowledged_at,now()),resolved_by=auth.uid(),resolved_at=now() where id=target_request;
+  if request_row.type='bill' then update public.table_sessions set status='open' where id=request_row.session_id and status='bill_requested'; end if;
+end;
+$$;
+
 create or replace function public.set_order_status(target_order uuid, next_status public.order_status, reason text default null) returns void
 language plpgsql security definer set search_path = public as $$
 declare current_order public.orders%rowtype;
@@ -678,6 +690,7 @@ revoke all on function public.get_public_session(uuid) from public;
 revoke all on function public.get_customer_order_history(uuid) from public;
 revoke all on function public.place_customer_order(uuid,jsonb) from public;
 revoke all on function public.create_customer_request(uuid,public.request_type) from public;
+revoke all on function public.resolve_customer_request(uuid) from public;
 revoke all on function public.get_public_invitation(uuid) from public;
 revoke all on function public.get_my_context() from public;
 revoke all on function public.create_restaurant_company(text,text,text,text) from public;
@@ -696,6 +709,7 @@ grant execute on function public.get_public_session(uuid) to anon,authenticated;
 grant execute on function public.get_customer_order_history(uuid) to anon,authenticated;
 grant execute on function public.place_customer_order(uuid,jsonb) to anon,authenticated;
 grant execute on function public.create_customer_request(uuid,public.request_type) to anon,authenticated;
+grant execute on function public.resolve_customer_request(uuid) to authenticated;
 grant execute on function public.get_public_invitation(uuid) to anon,authenticated;
 grant execute on function public.get_my_context() to authenticated;
 grant execute on function public.create_restaurant_company(text,text,text,text) to authenticated;
