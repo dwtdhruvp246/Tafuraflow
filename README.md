@@ -15,8 +15,8 @@ TafuraFlow is a plain HTML restaurant ordering and operations website. It works 
 - Editable menu categories and items with descriptions, USD prices, and uploaded pictures
 - Owner-controlled category order and item order inside each category, with each category routed to the kitchen or bar
 - Super Admin-controlled, restaurant-specific customer-menu themes, colors, fonts, headers, category navigation, item cards, image shapes, hero layouts, backgrounds, branding, contact details, and visibility controls
-- Each restaurant's customer-menu design can be saved once every 365 days
-- Advanced Super Admin menu builder with 12 templates, live phone/tablet/desktop previews, private drafts, publishing, undo/redo, accessibility warnings, annual-limit override, and restorable design versions
+- Each restaurant's customer-menu design can be edited and published whenever needed
+- Advanced Super Admin menu builder with 12 templates, live phone/tablet/desktop previews, private drafts, publishing, undo/redo, accessibility warnings, and restorable design versions
 - Staff-created tables and one-time table-session QR codes
 - Owner, manager, or waiter ordering from an open table's Menu button when guests cannot scan the QR code
 - Owners and managers can edit/delete tables and view current table orders
@@ -76,7 +76,7 @@ Then open **Settings â†’ Pages**, choose **Deploy from a branch**, select t
 - `signup.html` â€” private-link-only account creation for invited owners and staff
 - `forgot-password.html` / `reset-password.html` â€” password recovery
 - `dashboard.html` â€” Super Admin or restaurant overview
-- `companies.html` — Super Admin company and owner setup, payment history, and annual customer-menu design control
+- `companies.html` — Super Admin company and owner setup, payment history, and customer-menu design control
 - `admin-finance.html` â€” Super Admin manual restaurant-owner payment records
 - `tables.html` â€” tables, session opening, QR printing, staff-assisted menu ordering, payments, and final receipts
 - `orders.html` â€” waiter approval and kitchen order workflow

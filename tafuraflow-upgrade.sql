@@ -320,9 +320,6 @@ begin
   if not public.is_super_admin() then raise exception 'Super Admin access required'; end if;
   select * into restaurant_row from public.restaurants where id=target_restaurant for update;
   if not found then raise exception 'Restaurant company not found'; end if;
-  if restaurant_row.menu_design_changed_at is not null and restaurant_row.menu_design_changed_at > now()-interval '365 days' then
-    raise exception 'Menu design can only be changed once every 365 days. Next change available on %', to_char(restaurant_row.menu_design_changed_at+interval '365 days','DD Mon YYYY');
-  end if;
   if coalesce(appearance->>'menu_accent_color','#9A4632') !~ '^#[0-9A-Fa-f]{6}$' then raise exception 'Please choose a valid menu accent color'; end if;
   update public.restaurants set
     menu_theme=coalesce(appearance->>'menu_theme','warm'),menu_accent_color=upper(coalesce(appearance->>'menu_accent_color','#9A4632')),menu_layout=coalesce(appearance->>'menu_layout','rows'),
@@ -344,7 +341,7 @@ begin
   if not public.is_super_admin() then raise exception 'Super Admin access required'; end if;
   select * into r from public.restaurants where id=target_restaurant;
   if not found then raise exception 'Restaurant company not found'; end if;
-  return jsonb_build_object('restaurant_id',r.id,'restaurant_name',r.name,'template',r.menu_design_template,'draft',r.menu_design_draft,'published',r.menu_design_published,'draft_updated_at',r.menu_design_draft_updated_at,'last_published_at',r.menu_design_changed_at,'next_publish_at',case when r.menu_design_changed_at is null then null else r.menu_design_changed_at+interval '365 days' end,'can_publish',r.menu_design_changed_at is null or r.menu_design_changed_at<=now()-interval '365 days','versions',coalesce((select jsonb_agg(jsonb_build_object('id',v.id,'version_number',v.version_number,'template',v.template_key,'published_at',v.published_at,'published_by',p.full_name) order by v.version_number desc) from public.menu_design_versions v left join public.profiles p on p.id=v.published_by where v.restaurant_id=r.id),'[]'::jsonb));
+  return jsonb_build_object('restaurant_id',r.id,'restaurant_name',r.name,'template',r.menu_design_template,'draft',r.menu_design_draft,'published',r.menu_design_published,'draft_updated_at',r.menu_design_draft_updated_at,'last_published_at',r.menu_design_changed_at,'next_publish_at',null,'can_publish',true,'versions',coalesce((select jsonb_agg(jsonb_build_object('id',v.id,'version_number',v.version_number,'template',v.template_key,'published_at',v.published_at,'published_by',p.full_name) order by v.version_number desc) from public.menu_design_versions v left join public.profiles p on p.id=v.published_by where v.restaurant_id=r.id),'[]'::jsonb));
 end;
 $$;
 
@@ -368,12 +365,11 @@ begin
   select * into r from public.restaurants where id=target_restaurant for update;
   if not found then raise exception 'Restaurant company not found'; end if;
   if r.menu_design_draft='{}'::jsonb then raise exception 'Save a menu design draft before publishing'; end if;
-  if not allow_override and r.menu_design_changed_at is not null and r.menu_design_changed_at>now()-interval '365 days' then raise exception 'Menu design can only be published once every 365 days. Next publish available on %',to_char(r.menu_design_changed_at+interval '365 days','DD Mon YYYY'); end if;
   select coalesce(max(version_number),0)+1 into version_no from public.menu_design_versions where restaurant_id=target_restaurant;
   update public.restaurants set menu_design_published=r.menu_design_draft,menu_design_changed_at=now() where id=target_restaurant returning menu_design_changed_at into published_at;
   insert into public.menu_design_versions(restaurant_id,version_number,template_key,config,published_by,published_at) values(target_restaurant,version_no,r.menu_design_template,r.menu_design_draft,auth.uid(),published_at);
-  insert into public.audit_logs(restaurant_id,actor_id,action,entity_type,entity_id,details) values(target_restaurant,auth.uid(),'restaurant.menu_design_published','restaurant',target_restaurant,jsonb_build_object('version',version_no,'override',allow_override));
-  return jsonb_build_object('published_at',published_at,'version_number',version_no,'next_publish_at',published_at+interval '365 days');
+  insert into public.audit_logs(restaurant_id,actor_id,action,entity_type,entity_id,details) values(target_restaurant,auth.uid(),'restaurant.menu_design_published','restaurant',target_restaurant,jsonb_build_object('version',version_no));
+  return jsonb_build_object('published_at',published_at,'version_number',version_no,'next_publish_at',null);
 end;
 $$;
 
