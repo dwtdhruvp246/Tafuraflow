@@ -1,7 +1,7 @@
 (async function(){
   const page=document.body.dataset.page;
   try{
-    const ctx=await dq.requireAuth(); if(!ctx)return;
+    let ctx=await dq.requireAuth(); if(!ctx)return;
     const role=dq.roleOf(ctx);
     if(!dq.allowed(ctx,page)){location.replace(role==='kitchen'?'orders.html':role==='bar'?'bar-orders.html':'dashboard.html');return}
     dq.shell(page,ctx);
@@ -142,6 +142,28 @@
 
     const handlers={dashboard,companies,'admin-finance':adminFinance,tables,orders,'bar-orders':orders,'order-history':orderHistory,menu,staff,finance,settings};await handlers[page]();
     startGuestRequestAlerts();
-    if(['orders','bar-orders'].includes(page))dq.db.channel('live-orders').on('postgres_changes',{event:'*',schema:'public',table:'orders',filter:`restaurant_id=eq.${rid}`},()=>{clearTimeout(window.__orderRefresh);window.__orderRefresh=setTimeout(orders,300)}).subscribe();
+    const restaurantTables=new Set(['restaurants','restaurant_members','staff_invitations','physical_tables','table_sessions','menu_categories','menu_items','orders','discounts','customer_requests','payments','owner_payments']);
+    const liveTables={
+      dashboard:role==='super_admin'?['restaurants','staff_invitations']:['physical_tables','table_sessions','customer_requests','orders'],
+      companies:['restaurants','staff_invitations','owner_payments'],
+      'admin-finance':['owner_payments','restaurants'],
+      tables:['physical_tables','table_sessions','restaurant_members','profiles'],
+      orders:['orders','order_items','table_sessions'],
+      'bar-orders':['orders','order_items','table_sessions'],
+      'order-history':['orders','order_items','table_sessions'],
+      menu:['menu_categories','menu_items'],
+      staff:['restaurant_members','staff_invitations','profiles'],
+      finance:['table_sessions','payments','discounts','applied_discounts'],
+      settings:['restaurants','menu_items']
+    };
+    let liveTimer,liveBusy=false,livePending=false;const changedTables=new Set();
+    const liveStatus=(label,state='')=>{const el=document.getElementById('live-status');if(!el)return;el.className=`live-status ${state}`;const text=el.querySelector('span');if(text)text.textContent=label};
+    const scheduleLiveRefresh=table=>{changedTables.add(table);clearTimeout(liveTimer);liveTimer=setTimeout(refreshLivePage,450)};
+    async function refreshLivePage(){
+      if(document.querySelector('#modal-root .modal-backdrop')||document.activeElement?.matches('input,textarea,select')){liveTimer=setTimeout(refreshLivePage,900);return}
+      if(liveBusy){livePending=true;return}liveBusy=true;liveStatus('Updating…','updating');
+      try{if(changedTables.has('restaurants')){ctx=await dq.context();const restaurantName=ctx.restaurant?.name||(role==='super_admin'?'TafuraFlow platform':'No company assigned');document.querySelector('.company-name-display')?.replaceChildren(restaurantName);document.querySelector('.company-block strong')?.replaceChildren(restaurantName)}changedTables.clear();await handlers[page]();liveStatus('Updated now','updated');clearTimeout(window.__liveStatusReset);window.__liveStatusReset=setTimeout(()=>liveStatus('Live'),1800)}catch(error){console.error('Live page update failed',error);liveStatus('Reconnecting…','offline')}finally{liveBusy=false;if(livePending){livePending=false;scheduleLiveRefresh('pending')}}
+    }
+    const tablesForPage=[...new Set(liveTables[page]||[])];if(tablesForPage.length){let liveChannel=dq.db.channel(`live-page-${page}-${rid||'platform'}`);for(const table of tablesForPage){const config={event:'*',schema:'public',table};if(rid&&table==='restaurants')config.filter=`id=eq.${rid}`;else if(rid&&restaurantTables.has(table))config.filter=`restaurant_id=eq.${rid}`;liveChannel=liveChannel.on('postgres_changes',config,()=>scheduleLiveRefresh(table))}liveChannel.subscribe(status=>{if(status==='SUBSCRIBED')liveStatus('Live');else if(['CHANNEL_ERROR','TIMED_OUT'].includes(status))liveStatus('Reconnecting…','offline')})}
   }catch(error){console.error(error);const app=document.getElementById('app'),message=dq.friendlyError(error),blocked=/suspended|expired/i.test(message),expired=/expired/i.test(message);app.className='expired';app.innerHTML=`<div class="card account-state-card"><div class="account-state-icon" aria-hidden="true">${blocked?'!':'i'}</div><h1>${expired?'Restaurant account expired':blocked?'Restaurant account suspended':'Something needs attention'}</h1><p class="muted">${dq.esc(message)}</p>${blocked?'<button class="btn" id="account-signout">Sign out</button>':'<a class="btn" href="index.html">Back to sign in</a>'}</div>`;document.getElementById('account-signout')?.addEventListener('click',dq.signOut)}
 })();

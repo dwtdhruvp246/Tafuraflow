@@ -711,11 +711,21 @@ grant execute on function public.void_order_item(uuid,text) to authenticated;
 grant execute on function public.apply_discount_to_session(uuid,uuid) to authenticated;
 grant execute on function public.close_table_session(uuid,public.payment_method) to authenticated;
 
-do $$ begin
-  alter publication supabase_realtime add table public.orders;
-  alter publication supabase_realtime add table public.customer_requests;
-  alter publication supabase_realtime add table public.table_sessions;
-exception when duplicate_object then null;
+do $$
+declare realtime_table text;
+begin
+  foreach realtime_table in array array[
+    'profiles','restaurants','restaurant_members','staff_invitations','physical_tables','table_sessions',
+    'menu_categories','menu_items','orders','order_items','discounts','applied_discounts',
+    'customer_requests','payments','owner_payments'
+  ] loop
+    if not exists(
+      select 1 from pg_publication_tables
+      where pubname='supabase_realtime' and schemaname='public' and tablename=realtime_table
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I',realtime_table);
+    end if;
+  end loop;
 end $$;
 
 -- IMPORTANT FIRST-TIME SETUP

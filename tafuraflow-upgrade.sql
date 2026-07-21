@@ -426,6 +426,24 @@ grant update(active) on public.restaurant_members to authenticated;
 grant update(phone) on public.staff_invitations to authenticated;
 grant update(status,acknowledged_by,acknowledged_at,resolved_by,resolved_at) on public.customer_requests to authenticated;
 
+-- Keep every operational screen synchronized without requiring a browser refresh.
+do $$
+declare realtime_table text;
+begin
+  foreach realtime_table in array array[
+    'profiles','restaurants','restaurant_members','staff_invitations','physical_tables','table_sessions',
+    'menu_categories','menu_items','orders','order_items','discounts','applied_discounts',
+    'customer_requests','payments','owner_payments'
+  ] loop
+    if not exists(
+      select 1 from pg_publication_tables
+      where pubname='supabase_realtime' and schemaname='public' and tablename=realtime_table
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I',realtime_table);
+    end if;
+  end loop;
+end $$;
+
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
 values('menu-images','menu-images',true,5242880,array['image/jpeg','image/png','image/webp','image/gif'])
 on conflict(id) do update set public=true,file_size_limit=excluded.file_size_limit,allowed_mime_types=excluded.allowed_mime_types;
