@@ -20,6 +20,7 @@ TafuraFlow is a plain HTML restaurant ordering and operations website. It works 
 - Owners and managers can edit/delete tables and view current table orders
 - Customer menu, quantities, cart, repeat ordering, current-session order history, waiter request, and bill request
 - Live table-number popups on waiter and cashier screens for waiter calls and bill requests
+- Shared popup acknowledgement: dismissing a guest alert on either a waiter or cashier screen dismisses it everywhere while keeping the request open until resolved
 - Automatic live updates across tables, orders, menus, staff, receipts, company records and settings without manually refreshing the browser
 - Waiter approval before preparation, independent kitchen/bar item progress, waiter assignment, and fulfilled-order details
 - Dedicated kitchen and bar live-order screens plus preparation-area order history

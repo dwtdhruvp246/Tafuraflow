@@ -12,18 +12,19 @@
       if(!['waiter','cashier'].includes(role)||!rid)return;
       const seenKey=`dineqr-seen-requests-${rid}`,seen=new Set(JSON.parse(sessionStorage.getItem(seenKey)||'[]'));
       const remember=id=>{seen.add(id);sessionStorage.setItem(seenKey,JSON.stringify([...seen].slice(-100)))};
+      const removeAlert=id=>document.querySelectorAll(`.guest-request-alert[data-request-id="${id}"]`).forEach(alert=>alert.remove());
       const showAlert=async request=>{
-        if(!request||request.status!=='open'||seen.has(request.id))return;
+        if(!request||request.status!=='open'||request.acknowledged_at||seen.has(request.id))return;
         remember(request.id);
         try{
           const {data:sessionRow,error:sessionError}=await dq.db.from('table_sessions').select('table_id').eq('id',request.session_id).single();if(sessionError)throw sessionError;
           const {data:tableRow,error:tableError}=await dq.db.from('physical_tables').select('label').eq('id',sessionRow.table_id).single();if(tableError)throw tableError;
           let stack=document.getElementById('guest-alert-stack');if(!stack){stack=document.createElement('div');stack.id='guest-alert-stack';stack.className='guest-alert-stack';stack.setAttribute('aria-live','assertive');document.body.append(stack)}
-          const alert=document.createElement('section');alert.className=`guest-request-alert ${request.type==='bill'?'bill-alert':'waiter-alert'}`;alert.innerHTML=`<div class="guest-alert-icon">${request.type==='bill'?'$':'!'}</div><div class="guest-alert-copy"><small>${request.type==='bill'?'Bill request':'Waiter call'}</small><h3>Table ${dq.esc(tableRow.label)}</h3><p>${request.type==='bill'?'Table '+dq.esc(tableRow.label)+' is requesting the bill.':'Table '+dq.esc(tableRow.label)+' is calling a waiter.'}</p><div class="actions"><a class="btn small" href="tables.html">Open tables</a><button class="btn ghost small dismiss-guest-alert" type="button">Dismiss</button></div></div>`;stack.prepend(alert);alert.querySelector('.dismiss-guest-alert').onclick=()=>alert.remove();
+          const alert=document.createElement('section');alert.className=`guest-request-alert ${request.type==='bill'?'bill-alert':'waiter-alert'}`;alert.dataset.requestId=request.id;alert.innerHTML=`<div class="guest-alert-icon">${request.type==='bill'?'$':'!'}</div><div class="guest-alert-copy"><small>${request.type==='bill'?'Bill request':'Waiter call'}</small><h3>Table ${dq.esc(tableRow.label)}</h3><p>${request.type==='bill'?'Table '+dq.esc(tableRow.label)+' is requesting the bill.':'Table '+dq.esc(tableRow.label)+' is calling a waiter.'}</p><div class="actions"><a class="btn small" href="tables.html">Open tables</a><button class="btn ghost small dismiss-guest-alert" type="button">Dismiss</button></div></div>`;stack.prepend(alert);alert.querySelector('.dismiss-guest-alert').onclick=async event=>{const button=event.currentTarget;dq.setBusy(button,true,'Dismissing…');try{const {error}=await dq.db.from('customer_requests').update({acknowledged_by:ctx.profile.id,acknowledged_at:new Date().toISOString()}).eq('id',request.id).eq('status','open');if(error)throw error;removeAlert(request.id)}catch(error){dq.err(error);dq.setBusy(button,false)}};
         }catch(error){console.error('Could not show guest request alert',error)}
       };
-      const {data:openRequests,error}=await dq.db.from('customer_requests').select('*').eq('restaurant_id',rid).eq('status','open').order('created_at',{ascending:true}).limit(20);if(!error)(openRequests||[]).forEach(showAlert);
-      dq.db.channel(`guest-request-alerts-${rid}`).on('postgres_changes',{event:'INSERT',schema:'public',table:'customer_requests',filter:`restaurant_id=eq.${rid}`},payload=>showAlert(payload.new)).subscribe();
+      const {data:openRequests,error}=await dq.db.from('customer_requests').select('*').eq('restaurant_id',rid).eq('status','open').is('acknowledged_at',null).order('created_at',{ascending:true}).limit(20);if(!error)(openRequests||[]).forEach(showAlert);
+      dq.db.channel(`guest-request-alerts-${rid}`).on('postgres_changes',{event:'*',schema:'public',table:'customer_requests',filter:`restaurant_id=eq.${rid}`},payload=>{const request=payload.new||payload.old;if(!request)return;if(request.status!=='open'||request.acknowledged_at)removeAlert(request.id);else showAlert(request)}).subscribe();
     }
     const head=(title,copy,button='')=>`<div class="section-head"><div><h1>${dq.esc(title)}</h1><p>${dq.esc(copy)}</p></div>${button}</div>`;
     const invitationUrl=token=>{const url=new URL('signup.html',location.href);url.searchParams.set('invite',token);return url.href};
