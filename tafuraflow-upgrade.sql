@@ -27,6 +27,7 @@ alter table public.restaurants add column if not exists menu_address text;
 alter table public.restaurants add column if not exists menu_phone text;
 alter table public.restaurants add column if not exists menu_hours text;
 alter table public.restaurants add column if not exists menu_social_url text;
+alter table public.restaurants add column if not exists menu_design_changed_at timestamptz;
 alter table public.restaurants add column if not exists subscription_expires_at date;
 alter table public.table_sessions add column if not exists assigned_waiter_id uuid references public.profiles(id);
 alter table public.table_sessions add column if not exists assigned_waiter_name text;
@@ -296,6 +297,57 @@ begin
 end;
 $$;
 
+create or replace function public.admin_update_menu_appearance(target_restaurant uuid, appearance jsonb) returns timestamptz
+language plpgsql security definer set search_path = public as $$
+declare restaurant_row public.restaurants%rowtype; changed_at timestamptz;
+begin
+  if not public.is_super_admin() then raise exception 'Super Admin access required'; end if;
+  select * into restaurant_row from public.restaurants where id=target_restaurant for update;
+  if not found then raise exception 'Restaurant company not found'; end if;
+  if restaurant_row.menu_design_changed_at is not null and restaurant_row.menu_design_changed_at > now()-interval '365 days' then
+    raise exception 'Menu design can only be changed once every 365 days. Next change available on %', to_char(restaurant_row.menu_design_changed_at+interval '365 days','DD Mon YYYY');
+  end if;
+  if coalesce(appearance->>'menu_accent_color','#9A4632') !~ '^#[0-9A-Fa-f]{6}$' then raise exception 'Please choose a valid menu accent color'; end if;
+  update public.restaurants set
+    menu_theme=coalesce(appearance->>'menu_theme','warm'),menu_accent_color=upper(coalesce(appearance->>'menu_accent_color','#9A4632')),menu_layout=coalesce(appearance->>'menu_layout','rows'),
+    menu_tagline=nullif(trim(appearance->>'menu_tagline'),''),menu_logo_url=nullif(trim(appearance->>'menu_logo_url'),''),menu_hero_url=nullif(trim(appearance->>'menu_hero_url'),''),menu_show_images=coalesce((appearance->>'menu_show_images')::boolean,true),
+    menu_font_style=coalesce(appearance->>'menu_font_style','editorial'),menu_header_style=coalesce(appearance->>'menu_header_style','light'),menu_category_style=coalesce(appearance->>'menu_category_style','pills'),menu_card_style=coalesce(appearance->>'menu_card_style','soft'),
+    menu_image_shape=coalesce(appearance->>'menu_image_shape','rounded'),menu_hero_style=coalesce(appearance->>'menu_hero_style','split'),menu_background_style=coalesce(appearance->>'menu_background_style','cream'),
+    menu_show_hero=coalesce((appearance->>'menu_show_hero')::boolean,true),menu_show_descriptions=coalesce((appearance->>'menu_show_descriptions')::boolean,true),
+    menu_address=nullif(trim(appearance->>'menu_address'),''),menu_phone=nullif(trim(appearance->>'menu_phone'),''),menu_hours=nullif(trim(appearance->>'menu_hours'),''),menu_social_url=nullif(trim(appearance->>'menu_social_url'),''),menu_design_changed_at=now()
+  where id=target_restaurant returning menu_design_changed_at into changed_at;
+  insert into public.audit_logs(restaurant_id,actor_id,action,entity_type,entity_id,details) values(target_restaurant,auth.uid(),'restaurant.menu_design_changed','restaurant',target_restaurant,jsonb_build_object('changed_at',changed_at));
+  return changed_at;
+end;
+$$;
+
+create or replace function public.edit_restaurant_staff(target_restaurant uuid, target_user uuid, staff_name text, staff_phone text, staff_role public.app_role) returns void
+language plpgsql security definer set search_path = public as $$
+declare member_row public.restaurant_members%rowtype;
+begin
+  if not public.has_restaurant_role(target_restaurant,array['owner']::public.app_role[]) then raise exception 'Owner access required'; end if;
+  if staff_role in ('super_admin','owner') then raise exception 'Invalid staff role'; end if;
+  if length(trim(staff_name))<2 then raise exception 'Staff name is required'; end if;
+  select * into member_row from public.restaurant_members where restaurant_id=target_restaurant and user_id=target_user for update;
+  if not found or member_row.role='owner' then raise exception 'Staff member not found'; end if;
+  update public.profiles set full_name=trim(staff_name),phone=nullif(trim(staff_phone),'') where id=target_user;
+  update public.restaurant_members set role=staff_role where id=member_row.id;
+end;
+$$;
+
+create or replace function public.edit_staff_invitation(target_invitation uuid, staff_name text, staff_phone text, staff_role public.app_role) returns void
+language plpgsql security definer set search_path = public as $$
+declare invitation_row public.staff_invitations%rowtype;
+begin
+  select * into invitation_row from public.staff_invitations where id=target_invitation and accepted_at is null for update;
+  if not found then raise exception 'Pending staff invitation not found'; end if;
+  if not public.has_restaurant_role(invitation_row.restaurant_id,array['owner']::public.app_role[]) then raise exception 'Owner access required'; end if;
+  if staff_role in ('super_admin','owner') then raise exception 'Invalid staff role'; end if;
+  if length(trim(staff_name))<2 then raise exception 'Staff name is required'; end if;
+  update public.staff_invitations set full_name=trim(staff_name),phone=nullif(trim(staff_phone),''),role=staff_role where id=target_invitation;
+end;
+$$;
+
 create or replace function public.admin_set_restaurant_expiry(target_restaurant uuid, expiry_date date) returns void
 language plpgsql security definer set search_path = public as $$
 begin
@@ -419,6 +471,9 @@ revoke all on function public.create_restaurant_company(text,text,text,text) fro
 revoke all on function public.invite_staff(uuid,text,text,text,public.app_role) from public;
 revoke all on function public.admin_set_restaurant_status(uuid,boolean) from public;
 revoke all on function public.admin_update_restaurant_company(uuid,text,text,text,date) from public;
+revoke all on function public.admin_update_menu_appearance(uuid,jsonb) from public;
+revoke all on function public.edit_restaurant_staff(uuid,uuid,text,text,public.app_role) from public;
+revoke all on function public.edit_staff_invitation(uuid,text,text,public.app_role) from public;
 revoke all on function public.admin_set_restaurant_expiry(uuid,date) from public;
 revoke all on function public.assign_waiter_to_session(uuid,uuid) from public;
 revoke all on function public.resolve_customer_request(uuid) from public;
@@ -430,6 +485,9 @@ grant execute on function public.create_restaurant_company(text,text,text,text) 
 grant execute on function public.invite_staff(uuid,text,text,text,public.app_role) to authenticated;
 grant execute on function public.admin_set_restaurant_status(uuid,boolean) to authenticated;
 grant execute on function public.admin_update_restaurant_company(uuid,text,text,text,date) to authenticated;
+grant execute on function public.admin_update_menu_appearance(uuid,jsonb) to authenticated;
+grant execute on function public.edit_restaurant_staff(uuid,uuid,text,text,public.app_role) to authenticated;
+grant execute on function public.edit_staff_invitation(uuid,text,text,public.app_role) to authenticated;
 grant execute on function public.admin_set_restaurant_expiry(uuid,date) to authenticated;
 grant execute on function public.assign_waiter_to_session(uuid,uuid) to authenticated;
 grant execute on function public.resolve_customer_request(uuid) to authenticated;
@@ -440,7 +498,7 @@ grant select,insert,update,delete on public.profiles,public.restaurants,public.r
 grant select on public.receipts to authenticated;
 revoke update on public.profiles,public.restaurants,public.restaurant_members,public.staff_invitations,public.customer_requests from authenticated;
 grant update(full_name,phone) on public.profiles to authenticated;
-grant update(tax_percent,service_charge_kind,service_charge_value,menu_theme,menu_accent_color,menu_layout,menu_tagline,menu_logo_url,menu_hero_url,menu_show_images,menu_font_style,menu_header_style,menu_category_style,menu_card_style,menu_image_shape,menu_hero_style,menu_background_style,menu_show_hero,menu_show_descriptions,menu_address,menu_phone,menu_hours,menu_social_url) on public.restaurants to authenticated;
+grant update(tax_percent,service_charge_kind,service_charge_value) on public.restaurants to authenticated;
 grant update(active) on public.restaurant_members to authenticated;
 grant update(phone) on public.staff_invitations to authenticated;
 grant update(status,acknowledged_by,acknowledged_at,resolved_by,resolved_at) on public.customer_requests to authenticated;
@@ -469,8 +527,8 @@ on conflict(id) do update set public=true,file_size_limit=excluded.file_size_lim
 drop policy if exists dineqr_menu_images_public_read on storage.objects;
 create policy dineqr_menu_images_public_read on storage.objects for select using(bucket_id='menu-images');
 drop policy if exists dineqr_menu_images_staff_insert on storage.objects;
-create policy dineqr_menu_images_staff_insert on storage.objects for insert to authenticated with check(bucket_id='menu-images' and exists(select 1 from public.restaurant_members m where m.user_id=auth.uid() and m.active and m.restaurant_id::text=(storage.foldername(name))[1] and m.role in ('owner','manager')));
+create policy dineqr_menu_images_staff_insert on storage.objects for insert to authenticated with check(bucket_id='menu-images' and (public.is_super_admin() or exists(select 1 from public.restaurant_members m where m.user_id=auth.uid() and m.active and m.restaurant_id::text=(storage.foldername(name))[1] and m.role in ('owner','manager'))));
 drop policy if exists dineqr_menu_images_staff_update on storage.objects;
-create policy dineqr_menu_images_staff_update on storage.objects for update to authenticated using(bucket_id='menu-images' and exists(select 1 from public.restaurant_members m where m.user_id=auth.uid() and m.active and m.restaurant_id::text=(storage.foldername(name))[1] and m.role in ('owner','manager'))) with check(bucket_id='menu-images' and exists(select 1 from public.restaurant_members m where m.user_id=auth.uid() and m.active and m.restaurant_id::text=(storage.foldername(name))[1] and m.role in ('owner','manager')));
+create policy dineqr_menu_images_staff_update on storage.objects for update to authenticated using(bucket_id='menu-images' and (public.is_super_admin() or exists(select 1 from public.restaurant_members m where m.user_id=auth.uid() and m.active and m.restaurant_id::text=(storage.foldername(name))[1] and m.role in ('owner','manager')))) with check(bucket_id='menu-images' and (public.is_super_admin() or exists(select 1 from public.restaurant_members m where m.user_id=auth.uid() and m.active and m.restaurant_id::text=(storage.foldername(name))[1] and m.role in ('owner','manager'))));
 drop policy if exists dineqr_menu_images_staff_delete on storage.objects;
-create policy dineqr_menu_images_staff_delete on storage.objects for delete to authenticated using(bucket_id='menu-images' and exists(select 1 from public.restaurant_members m where m.user_id=auth.uid() and m.active and m.restaurant_id::text=(storage.foldername(name))[1] and m.role in ('owner','manager')));
+create policy dineqr_menu_images_staff_delete on storage.objects for delete to authenticated using(bucket_id='menu-images' and (public.is_super_admin() or exists(select 1 from public.restaurant_members m where m.user_id=auth.uid() and m.active and m.restaurant_id::text=(storage.foldername(name))[1] and m.role in ('owner','manager'))));
