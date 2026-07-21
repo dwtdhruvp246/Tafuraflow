@@ -1,6 +1,8 @@
-# DineQR
+# TafuraFlow
 
-DineQR is a plain HTML restaurant ordering and operations website. It works on GitHub Pages without Node.js, npm, Vercel, or a build command.
+TafuraFlow is a plain HTML restaurant ordering and operations website. It works on GitHub Pages without Node.js, npm, Vercel, or a build command.
+
+**Tagline:** Every table, in sync.
 
 ## What is included
 
@@ -43,15 +45,15 @@ set platform_role = 'super_admin'
 where lower(email) = lower('YOUR-EMAIL@example.com');
 ```
 
-7. Sign in at `index.html`. You can now add the first company and its owner. DineQR gives you a private invitation link to send to that owner.
+7. Sign in at `index.html`. You can now add the first company and its owner. TafuraFlow gives you a private invitation link to send to that owner.
 
-If you already ran the earlier DineQR SQL, do not run the complete schema again. Instead, run `supabase/migrations/20260718190000_invites_company_billing.sql`. The upgrade also repairs workflow permissions and is safe to run again when you receive a newer DineQR package.
+If you already ran the earlier TafuraFlow SQL, do not run the complete schema again. Instead, run `supabase/migrations/20260718190000_invites_company_billing.sql`. The upgrade also repairs workflow permissions and is safe to run again when you receive a newer TafuraFlow package.
 
 If Supabase requires email confirmation, confirm the email before signing in. In **Authentication → URL Configuration**, set the Site URL to your GitHub Pages address, for example `https://dwtdhruvp246.github.io/restaurant-website/`.
 
 ### 2. Upload to GitHub Pages
 
-The easiest method is to extract `DineQR-Upload-These-Files.zip` and upload **every file inside it** directly into the top level of the `restaurant-website` repository. This ZIP is specially prepared as a flat GitHub upload: `styles.css`, `app.js`, `core.js`, and the other shared files are beside `index.html`, so no folder creation is required. Replace the older files when GitHub asks.
+The easiest method is to extract `TafuraFlow-Upload-These-Files.zip` and upload **every file inside it** directly into the top level of the `restaurant-website` repository. This ZIP is specially prepared as a flat GitHub upload: `styles.css`, `app.js`, `core.js`, and the other shared files are beside `index.html`, so no folder creation is required. Replace the older files when GitHub asks.
 
 If you are uploading from the development folder instead, upload all of these:
 
@@ -90,6 +92,6 @@ Then open **Settings → Pages**, choose **Deploy from a branch**, select the `m
 - `assets/app.js` — restaurant and Super Admin functionality
 - `assets/customer.js` — customer menu, cart, ordering, and requests
 - `supabase/migrations/20260718120000_initial_schema.sql` — complete database, permissions, and secure functions
-- `supabase/migrations/20260718190000_invites_company_billing.sql` — upgrade for an existing DineQR database
+- `supabase/migrations/20260718190000_invites_company_billing.sql` — upgrade for an existing TafuraFlow database
 
 The Supabase anon key in `assets/config.js` is intended to be public. Security is enforced by the SQL row-level security policies. Never put a Supabase service-role key in an HTML or JavaScript file.
