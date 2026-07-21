@@ -255,6 +255,23 @@ begin
 end;
 $$;
 
+create or replace function public.open_table_session(target_table uuid) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare tbl public.physical_tables%rowtype; session_row public.table_sessions%rowtype; opener_waiter_name text;
+begin
+  select * into tbl from public.physical_tables where id=target_table and active;
+  if not found then raise exception 'Table not found'; end if;
+  if not public.has_restaurant_text_role(tbl.restaurant_id,array['owner','manager','waiter']) then raise exception 'Not allowed'; end if;
+  if exists(select 1 from public.table_sessions where table_id=target_table and status<>'closed') then raise exception 'Table is already open'; end if;
+  select p.full_name into opener_waiter_name from public.restaurant_members m join public.profiles p on p.id=m.user_id
+  where m.restaurant_id=tbl.restaurant_id and m.user_id=auth.uid() and m.role::text='waiter' and m.active;
+  insert into public.table_sessions(restaurant_id,table_id,opened_by,assigned_waiter_id,assigned_waiter_name)
+  values(tbl.restaurant_id,tbl.id,auth.uid(),case when opener_waiter_name is null then null else auth.uid() end,opener_waiter_name) returning * into session_row;
+  insert into public.audit_logs(restaurant_id,actor_id,action,entity_type,entity_id) values(tbl.restaurant_id,auth.uid(),'table.opened','table_session',session_row.id);
+  return jsonb_build_object('session_id',session_row.id,'public_token',session_row.public_token,'table_label',tbl.label,'assigned_waiter_name',session_row.assigned_waiter_name);
+end;
+$$;
+
 create or replace function public.admin_set_restaurant_status(target_restaurant uuid,new_active boolean) returns void
 language plpgsql security definer set search_path = public as $$
 begin
