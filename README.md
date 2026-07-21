@@ -16,6 +16,7 @@ TafuraFlow is a plain HTML restaurant ordering and operations website. It works 
 - Owner-controlled category order and item order inside each category, with each category routed to the kitchen or bar
 - Super Admin-controlled, restaurant-specific customer-menu themes, colors, fonts, headers, category navigation, item cards, image shapes, hero layouts, backgrounds, branding, contact details, and visibility controls
 - Each restaurant's customer-menu design can be saved once every 365 days
+- Advanced Super Admin menu builder with 12 templates, live phone/tablet/desktop previews, private drafts, publishing, undo/redo, accessibility warnings, annual-limit override, and restorable design versions
 - Staff-created tables and one-time table-session QR codes
 - Owner, manager, or waiter ordering from an open table's Menu button when guests cannot scan the QR code
 - Owners and managers can edit/delete tables and view current table orders
@@ -92,7 +93,8 @@ Then open **Settings â†’ Pages**, choose **Deploy from a branch**, select t
 - `assets/config.js` â€” the public Supabase URL and anon key
 - `assets/core.js` â€” shared login, layout, navigation, and helper code
 - `assets/auth.js` â€” sign-in, sign-up, and password reset logic
-- `assets/app.js` â€” restaurant and Super Admin functionality
+- `assets/app.js` â€” restaurant and Super Admin functionality
+- `assets/menu-builder.js` — advanced restaurant-specific visual menu editor, drafts, templates, previews, publishing, and version restoration
 - `assets/customer.js` â€” customer menu, cart, ordering, and requests
 - `supabase/migrations/20260718120000_initial_schema.sql` â€” complete database, permissions, and secure functions
 - `supabase/migrations/20260718190000_invites_company_billing.sql` â€” upgrade for an existing TafuraFlow database

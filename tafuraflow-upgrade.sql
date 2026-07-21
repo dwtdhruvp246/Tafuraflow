@@ -28,6 +28,11 @@ alter table public.restaurants add column if not exists menu_phone text;
 alter table public.restaurants add column if not exists menu_hours text;
 alter table public.restaurants add column if not exists menu_social_url text;
 alter table public.restaurants add column if not exists menu_design_changed_at timestamptz;
+alter table public.restaurants add column if not exists menu_design_draft jsonb not null default '{}'::jsonb;
+alter table public.restaurants add column if not exists menu_design_published jsonb not null default '{}'::jsonb;
+alter table public.restaurants add column if not exists menu_design_template text not null default 'modern-restaurant';
+alter table public.restaurants add column if not exists menu_design_draft_updated_at timestamptz;
+alter table public.restaurants add column if not exists menu_design_draft_updated_by uuid references public.profiles(id);
 alter table public.restaurants add column if not exists subscription_expires_at date;
 alter table public.table_sessions add column if not exists assigned_waiter_id uuid references public.profiles(id);
 alter table public.table_sessions add column if not exists assigned_waiter_name text;
@@ -82,6 +87,17 @@ create table if not exists public.owner_payments (
   access_expires_on date,
   recorded_by uuid not null references public.profiles(id),
   created_at timestamptz not null default now()
+);
+
+create table if not exists public.menu_design_versions (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
+  version_number integer not null,
+  template_key text not null,
+  config jsonb not null,
+  published_by uuid not null references public.profiles(id),
+  published_at timestamptz not null default now(),
+  unique(restaurant_id,version_number)
 );
 alter table public.owner_payments add column if not exists access_expires_on date;
 create index if not exists owner_payments_restaurant_date_idx on public.owner_payments(restaurant_id,payment_date desc);
@@ -148,7 +164,7 @@ begin
     'session_id',s.id,'session_status',s.status,'restaurant_id',r.id,'restaurant_name',r.name,'currency',r.currency,
     'tax_percent',r.tax_percent,'service_charge_kind',r.service_charge_kind,'service_charge_value',r.service_charge_value,'table_label',table_label,
     'menu_theme',r.menu_theme,'menu_accent_color',r.menu_accent_color,'menu_layout',r.menu_layout,'menu_tagline',r.menu_tagline,'menu_logo_url',r.menu_logo_url,'menu_hero_url',r.menu_hero_url,'menu_show_images',r.menu_show_images,
-    'menu_font_style',r.menu_font_style,'menu_header_style',r.menu_header_style,'menu_category_style',r.menu_category_style,'menu_card_style',r.menu_card_style,'menu_image_shape',r.menu_image_shape,'menu_hero_style',r.menu_hero_style,'menu_background_style',r.menu_background_style,'menu_show_hero',r.menu_show_hero,'menu_show_descriptions',r.menu_show_descriptions,'menu_address',r.menu_address,'menu_phone',r.menu_phone,'menu_hours',r.menu_hours,'menu_social_url',r.menu_social_url,
+    'menu_font_style',r.menu_font_style,'menu_header_style',r.menu_header_style,'menu_category_style',r.menu_category_style,'menu_card_style',r.menu_card_style,'menu_image_shape',r.menu_image_shape,'menu_hero_style',r.menu_hero_style,'menu_background_style',r.menu_background_style,'menu_show_hero',r.menu_show_hero,'menu_show_descriptions',r.menu_show_descriptions,'menu_address',r.menu_address,'menu_phone',r.menu_phone,'menu_hours',r.menu_hours,'menu_social_url',r.menu_social_url,'menu_design',r.menu_design_published,'menu_design_template',r.menu_design_template,
     'categories',coalesce((select jsonb_agg(jsonb_build_object('id',c.id,'name',c.name,'sort_order',c.sort_order) order by c.sort_order,c.name) from public.menu_categories c where c.restaurant_id=r.id and c.active),'[]'::jsonb),
     'items',coalesce((select jsonb_agg(jsonb_build_object('id',i.id,'category_id',i.category_id,'name',i.name,'description',i.description,'price',i.price,'image_url',i.image_url,'sort_order',i.sort_order) order by i.sort_order,i.name) from public.menu_items i where i.restaurant_id=r.id and i.available),'[]'::jsonb),
     'orders',coalesce((select jsonb_agg(jsonb_build_object(
@@ -321,6 +337,58 @@ begin
 end;
 $$;
 
+create or replace function public.admin_get_menu_design(target_restaurant uuid) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare r public.restaurants%rowtype;
+begin
+  if not public.is_super_admin() then raise exception 'Super Admin access required'; end if;
+  select * into r from public.restaurants where id=target_restaurant;
+  if not found then raise exception 'Restaurant company not found'; end if;
+  return jsonb_build_object('restaurant_id',r.id,'restaurant_name',r.name,'template',r.menu_design_template,'draft',r.menu_design_draft,'published',r.menu_design_published,'draft_updated_at',r.menu_design_draft_updated_at,'last_published_at',r.menu_design_changed_at,'next_publish_at',case when r.menu_design_changed_at is null then null else r.menu_design_changed_at+interval '365 days' end,'can_publish',r.menu_design_changed_at is null or r.menu_design_changed_at<=now()-interval '365 days','versions',coalesce((select jsonb_agg(jsonb_build_object('id',v.id,'version_number',v.version_number,'template',v.template_key,'published_at',v.published_at,'published_by',p.full_name) order by v.version_number desc) from public.menu_design_versions v left join public.profiles p on p.id=v.published_by where v.restaurant_id=r.id),'[]'::jsonb));
+end;
+$$;
+
+create or replace function public.admin_save_menu_design_draft(target_restaurant uuid, design jsonb, template_key text) returns timestamptz
+language plpgsql security definer set search_path = public as $$
+declare saved_at timestamptz;
+begin
+  if not public.is_super_admin() then raise exception 'Super Admin access required'; end if;
+  if jsonb_typeof(design)<>'object' or pg_column_size(design)>250000 then raise exception 'Menu design is invalid or too large'; end if;
+  update public.restaurants set menu_design_draft=design,menu_design_template=coalesce(nullif(trim(template_key),''),'custom'),menu_design_draft_updated_at=now(),menu_design_draft_updated_by=auth.uid() where id=target_restaurant returning menu_design_draft_updated_at into saved_at;
+  if not found then raise exception 'Restaurant company not found'; end if;
+  return saved_at;
+end;
+$$;
+
+create or replace function public.admin_publish_menu_design(target_restaurant uuid, allow_override boolean default false) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare r public.restaurants%rowtype; version_no integer; published_at timestamptz;
+begin
+  if not public.is_super_admin() then raise exception 'Super Admin access required'; end if;
+  select * into r from public.restaurants where id=target_restaurant for update;
+  if not found then raise exception 'Restaurant company not found'; end if;
+  if r.menu_design_draft='{}'::jsonb then raise exception 'Save a menu design draft before publishing'; end if;
+  if not allow_override and r.menu_design_changed_at is not null and r.menu_design_changed_at>now()-interval '365 days' then raise exception 'Menu design can only be published once every 365 days. Next publish available on %',to_char(r.menu_design_changed_at+interval '365 days','DD Mon YYYY'); end if;
+  select coalesce(max(version_number),0)+1 into version_no from public.menu_design_versions where restaurant_id=target_restaurant;
+  update public.restaurants set menu_design_published=r.menu_design_draft,menu_design_changed_at=now() where id=target_restaurant returning menu_design_changed_at into published_at;
+  insert into public.menu_design_versions(restaurant_id,version_number,template_key,config,published_by,published_at) values(target_restaurant,version_no,r.menu_design_template,r.menu_design_draft,auth.uid(),published_at);
+  insert into public.audit_logs(restaurant_id,actor_id,action,entity_type,entity_id,details) values(target_restaurant,auth.uid(),'restaurant.menu_design_published','restaurant',target_restaurant,jsonb_build_object('version',version_no,'override',allow_override));
+  return jsonb_build_object('published_at',published_at,'version_number',version_no,'next_publish_at',published_at+interval '365 days');
+end;
+$$;
+
+create or replace function public.admin_restore_menu_design_version(target_restaurant uuid, target_version uuid) returns timestamptz
+language plpgsql security definer set search_path = public as $$
+declare v public.menu_design_versions%rowtype; saved_at timestamptz;
+begin
+  if not public.is_super_admin() then raise exception 'Super Admin access required'; end if;
+  select * into v from public.menu_design_versions where id=target_version and restaurant_id=target_restaurant;
+  if not found then raise exception 'Menu design version not found'; end if;
+  update public.restaurants set menu_design_draft=v.config,menu_design_template=v.template_key,menu_design_draft_updated_at=now(),menu_design_draft_updated_by=auth.uid() where id=target_restaurant returning menu_design_draft_updated_at into saved_at;
+  return saved_at;
+end;
+$$;
+
 create or replace function public.edit_restaurant_staff(target_restaurant uuid, target_user uuid, staff_name text, staff_phone text, staff_role public.app_role) returns void
 language plpgsql security definer set search_path = public as $$
 declare member_row public.restaurant_members%rowtype;
@@ -425,6 +493,7 @@ end;
 $$;
 
 alter table public.owner_payments enable row level security;
+alter table public.menu_design_versions enable row level security;
 drop policy if exists restaurants_read on public.restaurants;
 create policy restaurants_read on public.restaurants for select using(public.is_super_admin() or public.has_restaurant_text_role(id,array['owner','manager','waiter','kitchen','bar','cashier']));
 drop policy if exists members_read on public.restaurant_members;
@@ -454,6 +523,8 @@ drop policy if exists restaurants_admin_delete on public.restaurants;
 create policy restaurants_admin_delete on public.restaurants for delete using(public.is_super_admin());
 drop policy if exists owner_payments_admin on public.owner_payments;
 create policy owner_payments_admin on public.owner_payments for all using(public.is_super_admin()) with check(public.is_super_admin());
+drop policy if exists menu_design_versions_admin on public.menu_design_versions;
+create policy menu_design_versions_admin on public.menu_design_versions for all using(public.is_super_admin()) with check(public.is_super_admin());
 drop policy if exists invitations_admin_update on public.staff_invitations;
 create policy invitations_admin_update on public.staff_invitations for update using(public.is_super_admin()) with check(public.is_super_admin());
 drop policy if exists members_owner_manage on public.restaurant_members;
@@ -472,6 +543,10 @@ revoke all on function public.invite_staff(uuid,text,text,text,public.app_role) 
 revoke all on function public.admin_set_restaurant_status(uuid,boolean) from public;
 revoke all on function public.admin_update_restaurant_company(uuid,text,text,text,date) from public;
 revoke all on function public.admin_update_menu_appearance(uuid,jsonb) from public;
+revoke all on function public.admin_get_menu_design(uuid) from public;
+revoke all on function public.admin_save_menu_design_draft(uuid,jsonb,text) from public;
+revoke all on function public.admin_publish_menu_design(uuid,boolean) from public;
+revoke all on function public.admin_restore_menu_design_version(uuid,uuid) from public;
 revoke all on function public.edit_restaurant_staff(uuid,uuid,text,text,public.app_role) from public;
 revoke all on function public.edit_staff_invitation(uuid,text,text,public.app_role) from public;
 revoke all on function public.admin_set_restaurant_expiry(uuid,date) from public;
@@ -486,6 +561,10 @@ grant execute on function public.invite_staff(uuid,text,text,text,public.app_rol
 grant execute on function public.admin_set_restaurant_status(uuid,boolean) to authenticated;
 grant execute on function public.admin_update_restaurant_company(uuid,text,text,text,date) to authenticated;
 grant execute on function public.admin_update_menu_appearance(uuid,jsonb) to authenticated;
+grant execute on function public.admin_get_menu_design(uuid) to authenticated;
+grant execute on function public.admin_save_menu_design_draft(uuid,jsonb,text) to authenticated;
+grant execute on function public.admin_publish_menu_design(uuid,boolean) to authenticated;
+grant execute on function public.admin_restore_menu_design_version(uuid,uuid) to authenticated;
 grant execute on function public.edit_restaurant_staff(uuid,uuid,text,text,public.app_role) to authenticated;
 grant execute on function public.edit_staff_invitation(uuid,text,text,public.app_role) to authenticated;
 grant execute on function public.admin_set_restaurant_expiry(uuid,date) to authenticated;
@@ -494,6 +573,7 @@ grant execute on function public.resolve_customer_request(uuid) to authenticated
 grant execute on function public.has_restaurant_text_role(uuid,text[]) to authenticated;
 grant execute on function public.set_station_order_status(uuid,text,text) to authenticated;
 grant select,insert,update,delete on public.owner_payments to authenticated;
+grant select,insert,update,delete on public.menu_design_versions to authenticated;
 grant select,insert,update,delete on public.profiles,public.restaurants,public.restaurant_members,public.staff_invitations,public.physical_tables,public.table_sessions,public.menu_categories,public.menu_items,public.orders,public.order_items,public.discounts,public.applied_discounts,public.customer_requests,public.payments,public.audit_logs to authenticated;
 grant select on public.receipts to authenticated;
 revoke update on public.profiles,public.restaurants,public.restaurant_members,public.staff_invitations,public.customer_requests from authenticated;
