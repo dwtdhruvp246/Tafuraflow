@@ -14,8 +14,10 @@ DineQR is a plain HTML restaurant ordering and operations website. It works on G
 - Owner-controlled category order and item order inside each category, with each category routed to the kitchen or bar
 - Restaurant-specific customer-menu themes, colors, fonts, headers, category navigation, item cards, image shapes, hero layouts, backgrounds, branding, contact details, and visibility controls
 - Staff-created tables and one-time table-session QR codes
+- Owner, manager, or waiter ordering from an open table's Menu button when guests cannot scan the QR code
 - Owners and managers can edit/delete tables and view current table orders
 - Customer menu, quantities, cart, repeat ordering, current-session order history, waiter request, and bill request
+- Live table-number popups on waiter and cashier screens for waiter calls and bill requests
 - Waiter approval before preparation, independent kitchen/bar item progress, waiter assignment, and fulfilled-order details
 - Dedicated kitchen and bar live-order screens plus preparation-area order history
 - Order preparation, ready, served, rejected, and item voiding with a reason
@@ -70,7 +72,7 @@ Then open **Settings → Pages**, choose **Deploy from a branch**, select the `m
 - `dashboard.html` — Super Admin or restaurant overview
 - `companies.html` — Super Admin company and owner setup
 - `admin-finance.html` — Super Admin manual restaurant-owner payment records
-- `tables.html` — tables, session opening, QR printing, payments, and final receipts
+- `tables.html` — tables, session opening, QR printing, staff-assisted menu ordering, payments, and final receipts
 - `orders.html` — waiter approval and kitchen order workflow
 - `bar-orders.html` — live drink orders routed to the bar account
 - `order-history.html` — previous kitchen or bar orders with full details
