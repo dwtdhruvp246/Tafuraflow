@@ -4,6 +4,19 @@ TafuraFlow is a restaurant ordering and operations system that runs as a plain H
 
 **Tagline:** Every table, in sync.
 
+## Release 1A.1
+
+Release 1A.1 adds Shared Waiter Mode for restaurants that use a small number of shared tablets:
+
+- One dedicated restaurant tablet account remains signed in to TafuraFlow
+- Each waiter chooses their name and enters a private four-number PIN
+- PIN-only waiters do not need an email address or individual Supabase Auth account
+- The active waiter's name is recorded on opened tables, assisted orders, status changes, voids, discounts, payments, and guest-request actions
+- A visible **Switch waiter** button safely returns the tablet to the waiter selection screen
+- The tablet automatically locks back to waiter selection after 15 minutes without activity
+- Five incorrect attempts temporarily lock that waiter PIN; repeated attempts also lock the device for 15 minutes
+- Owners manage waiter names, phone numbers, PINs, activation, and shared tablet accounts from the Staff page
+
 ## Release 1A
 
 Release 1A strengthens the menu-to-service workflow:
@@ -55,6 +68,8 @@ For a completely new database, run these files in this order:
 
 Only older installations that never received the invitations/company-billing upgrade need to run `20260718190000_invites_company_billing.sql` between those two files.
 
+After Release 1A is installed, run `supabase/migrations/20260809100116_shared_waiter_mode.sql` once to install Shared Waiter Mode. In the flat upload ZIP, this same file is named `tafuraflow-release-1a1.sql`.
+
 To make yourself Super Admin on a new installation, create your email and password in **Supabase > Authentication > Users**, then run:
 
 ```sql
@@ -65,11 +80,22 @@ where lower(email) = lower('YOUR-EMAIL@example.com');
 
 In **Authentication > URL Configuration**, set the Site URL to the GitHub Pages address, for example `https://dwtdhruvp246.github.io/restaurant-website/`.
 
-## Upload Release 1A to GitHub Pages
+## Set up a shared waiter tablet
+
+1. On the Owner **Staff** page, invite one dedicated waiter account for the tablet. Use a restaurant-controlled email, for example `tablet1@yourrestaurant.com`, and name it **Shared Waiter Tablet**.
+2. Complete that account's invitation on the physical tablet and sign in once with its email and password.
+3. From an owner account, return to **Staff** and choose **Use as shared tablet** for that dedicated account.
+4. Add each real waiter under **Tablet waiters**, including their name, phone number if needed, and a four-number PIN.
+5. The tablet will now show the waiter selection page. A waiter taps their name, enters their PIN, and uses TafuraFlow normally.
+6. Before handing the tablet to another waiter, tap **Switch waiter**. Use **Sign out device** only when removing the tablet from service.
+
+Do not use an owner's account as the shared tablet account. The dedicated device account should have the waiter role and should not represent a real person.
+
+## Upload Release 1A.1 to GitHub Pages
 
 The simplest method is:
 
-1. Extract `TafuraFlow-Release-1A-Upload.zip`.
+1. Extract `TafuraFlow-Release-1A.1-Upload.zip`.
 2. Open the `restaurant-website` repository on GitHub.
 3. Upload every extracted file to the repository's top level.
 4. Replace the older files when GitHub asks.
@@ -90,6 +116,8 @@ If GitHub Pages is not already enabled, open **Settings > Pages**, choose **Depl
 - `assets/core.js` — navigation, role routing, and friendly messages
 - `assets/styles.css` — all desktop and phone layouts
 - `supabase/migrations/20260808205304_release_1a_menu_service_foundations.sql` — Release 1A database, RLS policies, triggers, events, and secure functions
+- `waiter-login.html` and `assets/waiter-terminal.js` — shared tablet waiter selection and PIN entry
+- `supabase/migrations/20260809100116_shared_waiter_mode.sql` — Release 1A.1 PIN security, waiter attribution, secure functions, and RLS updates
 
 ## Security note
 
