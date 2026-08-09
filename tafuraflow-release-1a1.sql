@@ -89,7 +89,7 @@ begin
 end; $$;
 
 create or replace function private.current_waiter_profile(target_restaurant uuid,enforce_device boolean default true) returns uuid
-language plpgsql stable security definer set search_path=public,private as $$
+language plpgsql stable security definer set search_path=pg_catalog,private,extensions,public as $$
 declare member public.restaurant_members%rowtype; token text; waiter_id uuid;
 begin
   select * into member from public.restaurant_members where restaurant_id=target_restaurant and user_id=auth.uid() and active limit 1;
@@ -137,7 +137,7 @@ begin
 end; $$;
 
 create or replace function public.list_waiters_for_terminal() returns jsonb
-language plpgsql security definer set search_path=public,private as $$
+language plpgsql security definer set search_path=pg_catalog,private,extensions,public as $$
 declare rid uuid;
 begin
   select restaurant_id into rid from public.restaurant_members where user_id=auth.uid() and active and role='waiter' and is_shared_waiter_device;
@@ -148,7 +148,7 @@ begin
 end; $$;
 
 create or replace function public.start_waiter_terminal_session(target_waiter uuid,pin text) returns jsonb
-language plpgsql security definer set search_path=public,private as $$
+language plpgsql security definer set search_path=pg_catalog,private,extensions,public as $$
 declare member public.restaurant_members%rowtype; waiter public.waiter_profiles%rowtype; credential private.waiter_pin_credentials%rowtype; attempt private.waiter_device_attempts%rowtype; raw_token uuid; expiry timestamptz;
 begin
   select * into member from public.restaurant_members where user_id=auth.uid() and active and role='waiter' and is_shared_waiter_device;
@@ -182,7 +182,7 @@ begin
 end; $$;
 
 create or replace function public.end_waiter_terminal_session(token uuid) returns void
-language plpgsql security definer set search_path=public,private as $$
+language plpgsql security definer set search_path=pg_catalog,private,extensions,public as $$
 declare ended_waiter uuid; rid uuid;
 begin
   update private.waiter_terminal_sessions set ended_at=now() where device_user_id=auth.uid() and token_hash=digest(token::text,'sha256') and ended_at is null returning waiter_profile_id,restaurant_id into ended_waiter,rid;
@@ -190,7 +190,7 @@ begin
 end; $$;
 
 create or replace function public.create_tablet_waiter(staff_name text,staff_phone text,pin text) returns uuid
-language plpgsql security definer set search_path=public,private as $$
+language plpgsql security definer set search_path=pg_catalog,private,extensions,public as $$
 declare rid uuid; waiter_id uuid;
 begin
   select restaurant_id into rid from public.restaurant_members where user_id=auth.uid() and active and role='owner';
@@ -216,7 +216,7 @@ begin
 end; $$;
 
 create or replace function public.set_waiter_pin(target_waiter uuid,new_pin text) returns void
-language plpgsql security definer set search_path=public,private as $$
+language plpgsql security definer set search_path=pg_catalog,private,extensions,public as $$
 declare waiter public.waiter_profiles%rowtype;
 begin
   select * into waiter from public.waiter_profiles where id=target_waiter;

@@ -70,6 +70,8 @@ Only older installations that never received the invitations/company-billing upg
 
 After Release 1A is installed, run `supabase/migrations/20260809100116_shared_waiter_mode.sql` once to install Shared Waiter Mode. In the flat upload ZIP, this same file is named `tafuraflow-release-1a1.sql`.
 
+If Release 1A.1 was installed before 9 August 2026 and adding a PIN waiter reports that the database update is missing, do not rerun the full release. Run `supabase/migrations/20260809105855_fix_shared_waiter_extension_schema.sql` once instead. In the flat ZIP it is named `tafuraflow-release-1a1-repair.sql`. This connects the secured waiter functions to Supabase's `extensions` schema and refreshes the API schema cache.
+
 To make yourself Super Admin on a new installation, create your email and password in **Supabase > Authentication > Users**, then run:
 
 ```sql
@@ -118,6 +120,7 @@ If GitHub Pages is not already enabled, open **Settings > Pages**, choose **Depl
 - `supabase/migrations/20260808205304_release_1a_menu_service_foundations.sql` — Release 1A database, RLS policies, triggers, events, and secure functions
 - `waiter-login.html` and `assets/waiter-terminal.js` — shared tablet waiter selection and PIN entry
 - `supabase/migrations/20260809100116_shared_waiter_mode.sql` — Release 1A.1 PIN security, waiter attribution, secure functions, and RLS updates
+- `supabase/migrations/20260809105855_fix_shared_waiter_extension_schema.sql` — small repair for databases that installed the first Release 1A.1 file
 
 ## Security note
 
