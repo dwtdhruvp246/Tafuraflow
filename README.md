@@ -42,7 +42,7 @@ Release 1A strengthens the menu-to-service workflow:
 - Menu categories, ordered items, descriptions, prices, pictures, and restaurant-specific visual themes
 - One-time QR codes for staff-opened table sessions
 - Customer ordering, repeat ordering, cart, and current-session order history
-- Waiter approval before preparation
+- Direct customer-order routing to the configured Kitchen or Bar station
 - Staff-assisted ordering when a guest cannot scan the QR code
 - Waiter assignment, live guest alerts, shared alert dismissal, and automatic page updates
 - Discounts with usage limits, owner-controlled tax and service charges
@@ -72,6 +72,12 @@ After Release 1A is installed, run `supabase/migrations/20260809100116_shared_wa
 
 If Release 1A.1 was installed before 9 August 2026 and adding a PIN waiter reports that the database update is missing, do not rerun the full release. Run `supabase/migrations/20260809105855_fix_shared_waiter_extension_schema.sql` once instead. In the flat ZIP it is named `tafuraflow-release-1a1-repair.sql`. This connects the secured waiter functions to Supabase's `extensions` schema and refreshes the API schema cache.
 
+To restrict waiter order history, run `supabase/migrations/20260809195328_restrict_waiter_fulfilled_order_history.sql` once. In the flat ZIP it is named `tafuraflow-waiter-order-history.sql`. Waiters will continue seeing live service orders, but served and rejected orders are only visible to the waiter assigned to that table. Owners, managers, kitchen, bar and cashier retain their existing access.
+
+If the waiter Orders page shows a permission screen after installing the first waiter-history SQL, run `supabase/migrations/20260809200244_fix_waiter_order_history_login_link.sql` once. In the flat ZIP it is named `tafuraflow-waiter-order-history-repair.sql`. This connects the selected personal or shared-PIN waiter login to the table assignment without blocking the live Orders page.
+
+To remove waiter order approval and route new orders directly to Kitchen or Bar, run `supabase/migrations/20260809201204_auto_accept_and_route_orders.sql` once. In the flat ZIP it is named `tafuraflow-direct-order-routing.sql`. It also releases existing pending orders and routes each item using its menu station assignment.
+
 To make yourself Super Admin on a new installation, create your email and password in **Supabase > Authentication > Users**, then run:
 
 ```sql
@@ -93,11 +99,11 @@ In **Authentication > URL Configuration**, set the Site URL to the GitHub Pages 
 
 Do not use an owner's account as the shared tablet account. The dedicated device account should have the waiter role and should not represent a real person.
 
-## Upload Release 1A.1 to GitHub Pages
+## Upload the latest TafuraFlow files to GitHub Pages
 
 The simplest method is:
 
-1. Extract `TafuraFlow-Release-1A.1-Upload.zip`.
+1. Extract `TafuraFlow-Direct-Order-Routing-Upload.zip`.
 2. Open the `restaurant-website` repository on GitHub.
 3. Upload every extracted file to the repository's top level.
 4. Replace the older files when GitHub asks.
@@ -121,6 +127,9 @@ If GitHub Pages is not already enabled, open **Settings > Pages**, choose **Depl
 - `waiter-login.html` and `assets/waiter-terminal.js` — shared tablet waiter selection and PIN entry
 - `supabase/migrations/20260809100116_shared_waiter_mode.sql` — Release 1A.1 PIN security, waiter attribution, secure functions, and RLS updates
 - `supabase/migrations/20260809105855_fix_shared_waiter_extension_schema.sql` — small repair for databases that installed the first Release 1A.1 file
+- `supabase/migrations/20260809195328_restrict_waiter_fulfilled_order_history.sql` — waiter-specific served and rejected order-history privacy
+- `supabase/migrations/20260809200244_fix_waiter_order_history_login_link.sql` — repair that links the active waiter login to history without blocking the Orders page
+- `supabase/migrations/20260809201204_auto_accept_and_route_orders.sql` — automatic order acceptance and direct Kitchen/Bar routing
 
 ## Security note
 
