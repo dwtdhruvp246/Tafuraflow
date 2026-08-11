@@ -4,6 +4,21 @@ TafuraFlow is a restaurant ordering and operations system that runs as a plain H
 
 **Tagline:** Every table, in sync.
 
+## Release 1B
+
+Release 1B adds the business and payment foundation required for Zimbabwe-first restaurant operations:
+
+- A default branch for every existing restaurant, with branch IDs backfilled across operational records
+- Africa/Harare timezone and a configurable late-night business-day cutoff
+- Automatically opened business dates that owners or managers can close after all tables are closed
+- USD as the default bill currency, with optional ZiG (ZWG) recording and a branch-maintained conversion rate
+- Cash USD, Cash ZiG, Card, EcoCash, InnBucks, ZIPIT, bank transfer, and other offline payment methods
+- Payment references and received-currency details on receipts
+- Bills, bill lines, payments, and payment allocations, while the current screen still records one final payment
+- Permission definitions, staff overrides, approval-request foundations, and immutable financial events
+- Per-table public order/request limits and owner/manager suspicious-activity review
+- A new responsive **Business** page for branch, currency, payment-method, business-day, and security controls
+
 ## Release 1A.1
 
 Release 1A.1 adds Shared Waiter Mode for restaurants that use a small number of shared tablets:
@@ -78,6 +93,8 @@ If the waiter Orders page shows a permission screen after installing the first w
 
 To remove waiter order approval and route new orders directly to Kitchen or Bar, run `supabase/migrations/20260809201204_auto_accept_and_route_orders.sql` once. In the flat ZIP it is named `tafuraflow-direct-order-routing.sql`. It also releases existing pending orders and routes each item using its menu station assignment.
 
+After all Release 1A and 1A.1 files above are installed, run `supabase/migrations/20260811085036_release_1b_business_payment_foundations.sql` once. In the flat ZIP it is named `tafuraflow-release-1b.sql`. Do not run Release 1B before the earlier migrations because it backfills their tables and waiter attribution fields.
+
 To make yourself Super Admin on a new installation, create your email and password in **Supabase > Authentication > Users**, then run:
 
 ```sql
@@ -103,7 +120,7 @@ Do not use an owner's account as the shared tablet account. The dedicated device
 
 The simplest method is:
 
-1. Extract `TafuraFlow-Direct-Order-Routing-Upload.zip`.
+1. Extract `TafuraFlow-Release-1B-Upload.zip`.
 2. Open the `restaurant-website` repository on GitHub.
 3. Upload every extracted file to the repository's top level.
 4. Replace the older files when GitHub asks.
@@ -113,7 +130,7 @@ The prepared ZIP is flat: `index.html`, `styles.css`, `app.js`, and the other fi
 
 If GitHub Pages is not already enabled, open **Settings > Pages**, choose **Deploy from a branch**, select `main` and `/ (root)`, then save.
 
-## Important Release 1A files
+## Important release files
 
 - `menu-foundations.html` — owner/manager Menu Operations page
 - `stations.html` — kitchen/bar preparation station board
@@ -130,6 +147,8 @@ If GitHub Pages is not already enabled, open **Settings > Pages**, choose **Depl
 - `supabase/migrations/20260809195328_restrict_waiter_fulfilled_order_history.sql` — waiter-specific served and rejected order-history privacy
 - `supabase/migrations/20260809200244_fix_waiter_order_history_login_link.sql` — repair that links the active waiter login to history without blocking the Orders page
 - `supabase/migrations/20260809201204_auto_accept_and_route_orders.sql` — automatic order acceptance and direct Kitchen/Bar routing
+- `business.html` and `assets/business.js` — Release 1B business, currency, payment-method, business-day, and security controls
+- `supabase/migrations/20260811085036_release_1b_business_payment_foundations.sql` — Release 1B branch, business date, payment, permission, audit, RLS, and monitoring foundation
 
 ## Security note
 

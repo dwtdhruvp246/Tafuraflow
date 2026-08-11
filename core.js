@@ -5,14 +5,14 @@
   const db=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey,terminalToken?{global:{headers:{'x-tafuraflow-waiter-token':terminalToken}}}:undefined);
   const nav={
     super_admin:[['dashboard.html','Overview'],['companies.html','Companies'],['admin-finance.html','Owner payments']],
-    owner:[['dashboard.html','Overview'],['tables.html','Tables & QR'],['orders.html','Orders'],['menu.html','Menu'],['menu-foundations.html','Menu operations'],['staff.html','Staff'],['finance.html','Finances'],['settings.html','Settings']],
-    manager:[['dashboard.html','Overview'],['tables.html','Tables & QR'],['orders.html','Orders'],['menu.html','Menu'],['menu-foundations.html','Menu operations'],['staff.html','Staff']],
+    owner:[['dashboard.html','Overview'],['tables.html','Tables & QR'],['orders.html','Orders'],['menu.html','Menu'],['menu-foundations.html','Menu operations'],['staff.html','Staff'],['finance.html','Finances'],['business.html','Business'],['settings.html','Settings']],
+    manager:[['dashboard.html','Overview'],['tables.html','Tables & QR'],['orders.html','Orders'],['menu.html','Menu'],['menu-foundations.html','Menu operations'],['staff.html','Staff'],['business.html','Business']],
     waiter:[['dashboard.html','Overview'],['tables.html','Tables & QR'],['orders.html','Orders']],
     kitchen:[['stations.html','Kitchen stations'],['order-history.html','Previous orders']],
     bar:[['stations.html','Bar stations'],['order-history.html','Previous orders']],
     cashier:[['dashboard.html','Overview'],['tables.html','Tables & bills'],['finance.html','Receipts']]
   };
-  const titles={dashboard:'Overview',companies:'Companies','admin-finance':'Owner payments',tables:'Tables & QR codes',orders:'Orders','bar-orders':'Bar orders','order-history':'Previous orders',menu:'Menu','menu-foundations':'Menu operations',stations:'Preparation stations',staff:'Staff',finance:'Finances',settings:'Restaurant settings'};
+  const titles={dashboard:'Overview',companies:'Companies','admin-finance':'Owner payments',tables:'Tables & QR codes',orders:'Orders','bar-orders':'Bar orders','order-history':'Previous orders',menu:'Menu','menu-foundations':'Menu operations',stations:'Preparation stations',staff:'Staff',finance:'Finances',business:'Business setup',settings:'Restaurant settings'};
   const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const money=(v,c='USD')=>new Intl.NumberFormat('en-US',{style:'currency',currency:c}).format(Number(v||0));
   const date=v=>v?new Intl.DateTimeFormat('en-US',{dateStyle:'medium',timeStyle:'short'}).format(new Date(v)):'—';
