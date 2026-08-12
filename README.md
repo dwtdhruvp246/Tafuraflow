@@ -4,6 +4,35 @@ TafuraFlow is a restaurant ordering and operations system that runs as a plain H
 
 **Tagline:** Every table, in sync.
 
+## Release 2
+
+Release 2 adds live floor control, waiter ownership, advanced preparation timing, and service-performance reporting:
+
+- Visual floor areas with restaurant tables positioned on a room canvas
+- Live table states for available, seated, ordered, preparing, ready to serve, and bill requested
+- Guest count, elapsed table time, assigned waiter, live bill total, and ready-item count on the floor
+- A responsive **My floor** list for waiter phones and shared tablets
+- Manager-defined waiter sections with table membership and an assigned waiter
+- Manager table transfers with a required reason, waiter reassignment, and permanent transfer history
+- KDS tickets separated into New, Preparing, and Ready lanes
+- Ticket acknowledgement, item timing timestamps, warning/overdue thresholds, and Rush/VIP priority
+- Persistent ready alerts for the assigned waiter
+- Kitchen and bar sold-out controls connected to customer menu availability
+- Item-by-item preparation status in the customer's **My orders** view
+- Service analytics for covers, table time, preparation time, overdue tickets, guest-response time, stations, and waiters
+
+### Install Release 2
+
+Release 2 requires all Release 1 files, including Release 1B. After Release 1B has succeeded:
+
+1. Open Supabase **SQL Editor** and create a new query.
+2. Copy all of `supabase/migrations/20260812110000_release_2_floor_service_advanced_kds.sql` into it. In the flat upload ZIP, this is `tafuraflow-release-2.sql`.
+3. Click **Run** once. Do not run the Release 2 SQL again after it succeeds.
+4. Extract `TafuraFlow-Release-2-Upload.zip` and upload every extracted file to the top level of the GitHub repository, replacing the old website files.
+5. Sign in as an owner or manager, open **Floor**, arrange tables, and create waiter sections.
+
+Install the SQL before uploading the Release 2 website files. Otherwise the new pages will report that the database update is missing.
+
 ## Release 1B
 
 Release 1B adds the business and payment foundation required for Zimbabwe-first restaurant operations:
@@ -120,7 +149,7 @@ Do not use an owner's account as the shared tablet account. The dedicated device
 
 The simplest method is:
 
-1. Extract `TafuraFlow-Release-1B-Upload.zip`.
+1. Extract `TafuraFlow-Release-2-Upload.zip`.
 2. Open the `restaurant-website` repository on GitHub.
 3. Upload every extracted file to the repository's top level.
 4. Replace the older files when GitHub asks.
@@ -149,6 +178,13 @@ If GitHub Pages is not already enabled, open **Settings > Pages**, choose **Depl
 - `supabase/migrations/20260809201204_auto_accept_and_route_orders.sql` — automatic order acceptance and direct Kitchen/Bar routing
 - `business.html` and `assets/business.js` — Release 1B business, currency, payment-method, business-day, and security controls
 - `supabase/migrations/20260811085036_release_1b_business_payment_foundations.sql` — Release 1B branch, business date, payment, permission, audit, RLS, and monitoring foundation
+
+## Release 2 files
+
+- `floor.html` and `assets/floor.js` — live floor, layout editing, waiter sections, and table transfers
+- `analytics.html` and `assets/analytics.js` — table, waiter, station, KDS, and service-request analytics
+- `assets/stations.js` — acknowledged KDS tickets, timers, priority, ready alerts, and sold-out actions
+- `supabase/migrations/20260812110000_release_2_floor_service_advanced_kds.sql` — Release 2 database, secure functions, RLS, grants, and Realtime setup
 
 ## Security note
 
