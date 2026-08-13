@@ -1,8 +1,9 @@
 -- TafuraFlow Release 2: Floor, Service and Advanced KDS
--- Requires Release 1B. Additive migration; run once.
+-- Requires Release 1B. Additive migration. Safe to rerun after a partial or
+-- previously completed installation; existing Release 2 objects are retained.
 
 -- Visual floor ----------------------------------------------------------------
-create table public.floor_areas (
+create table if not exists public.floor_areas (
   id uuid primary key default gen_random_uuid(),
   restaurant_id uuid not null references public.restaurants(id) on delete cascade,
   branch_id uuid not null references public.restaurant_branches(id) on delete cascade,
@@ -21,12 +22,12 @@ insert into public.floor_areas(restaurant_id,branch_id,name,sort_order)
 select b.restaurant_id,b.id,'Dining room',10 from public.restaurant_branches b
 where b.is_default and not exists(select 1 from public.floor_areas a where a.branch_id=b.id);
 
-alter table public.physical_tables add column floor_area_id uuid references public.floor_areas(id) on delete set null;
-alter table public.physical_tables add column floor_x integer not null default 32 check(floor_x between 0 and 2400);
-alter table public.physical_tables add column floor_y integer not null default 32 check(floor_y between 0 and 1600);
-alter table public.physical_tables add column floor_width integer not null default 132 check(floor_width between 80 and 360);
-alter table public.physical_tables add column floor_height integer not null default 96 check(floor_height between 72 and 280);
-alter table public.physical_tables add column floor_shape text not null default 'rectangle' check(floor_shape in ('rectangle','round','booth'));
+alter table public.physical_tables add column if not exists floor_area_id uuid references public.floor_areas(id) on delete set null;
+alter table public.physical_tables add column if not exists floor_x integer not null default 32 check(floor_x between 0 and 2400);
+alter table public.physical_tables add column if not exists floor_y integer not null default 32 check(floor_y between 0 and 1600);
+alter table public.physical_tables add column if not exists floor_width integer not null default 132 check(floor_width between 80 and 360);
+alter table public.physical_tables add column if not exists floor_height integer not null default 96 check(floor_height between 72 and 280);
+alter table public.physical_tables add column if not exists floor_shape text not null default 'rectangle' check(floor_shape in ('rectangle','round','booth'));
 
 with ranked as (
   select t.id,a.id area_id,row_number() over(partition by t.branch_id order by t.label) n
@@ -38,11 +39,11 @@ update public.physical_tables t set floor_area_id=r.area_id,
   floor_x=32+(((r.n-1)%5)*168),floor_y=32+(floor((r.n-1)/5.0)::integer*132)
 from ranked r where r.id=t.id;
 
-create index floor_areas_branch_idx on public.floor_areas(branch_id,active,sort_order);
-create index physical_tables_floor_idx on public.physical_tables(floor_area_id,floor_y,floor_x);
+create index if not exists floor_areas_branch_idx on public.floor_areas(branch_id,active,sort_order);
+create index if not exists physical_tables_floor_idx on public.physical_tables(floor_area_id,floor_y,floor_x);
 
 -- Waiter sections and immutable transfers ------------------------------------
-create table public.waiter_sections (
+create table if not exists public.waiter_sections (
   id uuid primary key default gen_random_uuid(),
   restaurant_id uuid not null references public.restaurants(id) on delete cascade,
   branch_id uuid not null references public.restaurant_branches(id) on delete cascade,
@@ -55,7 +56,7 @@ create table public.waiter_sections (
   updated_at timestamptz not null default now(),
   unique(branch_id,name)
 );
-create table public.waiter_section_tables (
+create table if not exists public.waiter_section_tables (
   section_id uuid not null references public.waiter_sections(id) on delete cascade,
   table_id uuid not null references public.physical_tables(id) on delete cascade,
   assigned_at timestamptz not null default now(),
@@ -63,7 +64,7 @@ create table public.waiter_section_tables (
   primary key(section_id,table_id),
   unique(table_id)
 );
-create table public.table_transfers (
+create table if not exists public.table_transfers (
   id uuid primary key default gen_random_uuid(),
   restaurant_id uuid not null references public.restaurants(id) on delete cascade,
   branch_id uuid not null references public.restaurant_branches(id) on delete cascade,
@@ -77,8 +78,8 @@ create table public.table_transfers (
   transferred_at timestamptz not null default now(),
   check(from_table_id<>to_table_id)
 );
-create index waiter_sections_branch_idx on public.waiter_sections(branch_id,active);
-create index table_transfers_session_idx on public.table_transfers(session_id,transferred_at desc);
+create index if not exists waiter_sections_branch_idx on public.waiter_sections(branch_id,active);
+create index if not exists table_transfers_session_idx on public.table_transfers(session_id,transferred_at desc);
 
 create or replace function public.apply_waiter_section_on_open() returns trigger language plpgsql security definer set search_path=public as $$
 declare w public.waiter_profiles%rowtype;
@@ -88,17 +89,18 @@ begin
  if w.id is not null then update public.table_sessions set assigned_waiter_profile_id=w.id,assigned_waiter_name=w.full_name where id=new.id; end if;
  return new;
 end $$;
+drop trigger if exists session_apply_waiter_section on public.table_sessions;
 create trigger session_apply_waiter_section after insert on public.table_sessions for each row execute function public.apply_waiter_section_on_open();
 
 -- Advanced KDS ----------------------------------------------------------------
-alter table public.prep_stations add column warning_minutes integer not null default 10 check(warning_minutes between 1 and 180);
-alter table public.prep_stations add column overdue_minutes integer not null default 20 check(overdue_minutes between 2 and 360);
-alter table public.prep_stations add column target_minutes integer not null default 15 check(target_minutes between 1 and 240);
-alter table public.order_items add column kds_acknowledged_at timestamptz;
-alter table public.order_items add column kds_started_at timestamptz;
-alter table public.order_items add column kds_ready_at timestamptz;
+alter table public.prep_stations add column if not exists warning_minutes integer not null default 10 check(warning_minutes between 1 and 180);
+alter table public.prep_stations add column if not exists overdue_minutes integer not null default 20 check(overdue_minutes between 2 and 360);
+alter table public.prep_stations add column if not exists target_minutes integer not null default 15 check(target_minutes between 1 and 240);
+alter table public.order_items add column if not exists kds_acknowledged_at timestamptz;
+alter table public.order_items add column if not exists kds_started_at timestamptz;
+alter table public.order_items add column if not exists kds_ready_at timestamptz;
 
-create table public.kds_tickets (
+create table if not exists public.kds_tickets (
   id uuid primary key default gen_random_uuid(),
   restaurant_id uuid not null references public.restaurants(id) on delete cascade,
   branch_id uuid not null references public.restaurant_branches(id) on delete cascade,
@@ -116,7 +118,7 @@ create table public.kds_tickets (
   updated_at timestamptz not null default now(),
   unique(order_id,prep_station_id)
 );
-create table public.kds_ticket_events (
+create table if not exists public.kds_ticket_events (
   id bigint generated always as identity primary key,
   restaurant_id uuid not null references public.restaurants(id) on delete cascade,
   branch_id uuid not null references public.restaurant_branches(id) on delete cascade,
@@ -129,7 +131,7 @@ create table public.kds_ticket_events (
   detail jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
-create table public.waiter_ready_alerts (
+create table if not exists public.waiter_ready_alerts (
   id uuid primary key default gen_random_uuid(),
   restaurant_id uuid not null references public.restaurants(id) on delete cascade,
   branch_id uuid not null references public.restaurant_branches(id) on delete cascade,
@@ -142,9 +144,9 @@ create table public.waiter_ready_alerts (
   acknowledged_by uuid references public.profiles(id),
   unique(ticket_id)
 );
-create index kds_tickets_station_status_idx on public.kds_tickets(prep_station_id,status,created_at);
-create index kds_events_ticket_idx on public.kds_ticket_events(ticket_id,created_at);
-create index waiter_ready_open_idx on public.waiter_ready_alerts(restaurant_id,waiter_profile_id,created_at) where acknowledged_at is null;
+create index if not exists kds_tickets_station_status_idx on public.kds_tickets(prep_station_id,status,created_at);
+create index if not exists kds_events_ticket_idx on public.kds_ticket_events(ticket_id,created_at);
+create index if not exists waiter_ready_open_idx on public.waiter_ready_alerts(restaurant_id,waiter_profile_id,created_at) where acknowledged_at is null;
 
 insert into public.kds_tickets(restaurant_id,branch_id,order_id,session_id,prep_station_id,status,created_at,started_at,ready_at)
 select o.restaurant_id,o.branch_id,o.id,o.session_id,i.prep_station_id,
@@ -169,6 +171,7 @@ begin
   on conflict(order_id,prep_station_id) do nothing;
   return new;
 end $$;
+drop trigger if exists order_item_ensure_kds on public.order_items;
 create trigger order_item_ensure_kds after insert or update of prep_station_id on public.order_items for each row execute function public.ensure_kds_ticket();
 
 create or replace function public.sync_kds_ticket_from_items() returns trigger language plpgsql security definer set search_path=public as $$
@@ -188,6 +191,7 @@ begin
  where order_id=new.order_id and prep_station_id=new.prep_station_id;
  return new;
 end $$;
+drop trigger if exists order_item_sync_kds on public.order_items;
 create trigger order_item_sync_kds after update of preparation_status,voided_at on public.order_items for each row execute function public.sync_kds_ticket_from_items();
 
 -- Secured workflow functions --------------------------------------------------
@@ -322,6 +326,13 @@ $$;
 
 -- RLS, grants, realtime --------------------------------------------------------
 alter table public.floor_areas enable row level security;alter table public.waiter_sections enable row level security;alter table public.waiter_section_tables enable row level security;alter table public.table_transfers enable row level security;alter table public.kds_tickets enable row level security;alter table public.kds_ticket_events enable row level security;alter table public.waiter_ready_alerts enable row level security;
+drop policy if exists floor_areas_read on public.floor_areas;
+drop policy if exists waiter_sections_read on public.waiter_sections;
+drop policy if exists section_tables_read on public.waiter_section_tables;
+drop policy if exists transfers_read on public.table_transfers;
+drop policy if exists kds_tickets_read on public.kds_tickets;
+drop policy if exists kds_events_read on public.kds_ticket_events;
+drop policy if exists ready_alerts_read on public.waiter_ready_alerts;
 create policy floor_areas_read on public.floor_areas for select to authenticated using(public.has_restaurant_text_role(restaurant_id,array['owner','manager','waiter','kitchen','bar','cashier']));
 create policy waiter_sections_read on public.waiter_sections for select to authenticated using(public.has_restaurant_text_role(restaurant_id,array['owner','manager','waiter']));
 create policy section_tables_read on public.waiter_section_tables for select to authenticated using(exists(select 1 from public.waiter_sections s where s.id=section_id and public.has_restaurant_text_role(s.restaurant_id,array['owner','manager','waiter'])));

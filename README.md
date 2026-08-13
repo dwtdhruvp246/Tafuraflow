@@ -4,6 +4,33 @@ TafuraFlow is a restaurant ordering and operations system that runs as a plain H
 
 **Tagline:** Every table, in sync.
 
+## Release 3
+
+Release 3 adds the financial close and workforce controls needed for accountable daily restaurant operations:
+
+- Staff schedules, self clock-in/out, actual hours, break minutes, shift tasks, and a manager handover logbook
+- Cashier shifts with opening float, cash-ins, paid-outs, refunds, adjustments, counted cash, and variance
+- Payments automatically linked to the cashier's currently open till
+- Business-day closing that refuses to lock until all tables are closed and every till is reconciled
+- Immutable day-close snapshots covering sales, payments, expected cash, counted cash, and variance
+- Manager approval requests and decisions for discounts, voids, refunds, payment corrections, cash adjustments, and day reopening
+- Restaurant-specific manager thresholds for controlled actions
+- Split bills by equal share or by ordered item, with one payment per guest bill and automatic table closure after the final split is paid
+- Advanced reports for daily/hourly sales, payment methods, tables, waiters, menu items, discounts, voids, cash shifts, and staff attendance
+- CSV export and printable management reports
+
+### Install Release 3
+
+Release 3 requires Release 2 and every earlier migration.
+
+1. Open Supabase **SQL Editor** and create a new query.
+2. Copy all of `supabase/migrations/20260813110000_release_3_financial_staff_operations.sql` into it. In the flat upload ZIP, this is `tafuraflow-release-3.sql`.
+3. Click **Run** once. Do not run the Release 3 SQL again after it succeeds.
+4. Extract `TafuraFlow-Release-3-Upload.zip` and upload every extracted file to the top level of the GitHub repository, replacing the older files.
+5. Sign in as owner or manager and open **Daily operations**, **Approvals**, **Split bills**, and **Reports**.
+
+Install the SQL before uploading the new website files. Existing normal table checkout continues to work; use **Split bills** only for tables that need separate guest payments.
+
 ## Release 2
 
 Release 2 adds live floor control, waiter ownership, advanced preparation timing, and service-performance reporting:
@@ -149,7 +176,7 @@ Do not use an owner's account as the shared tablet account. The dedicated device
 
 The simplest method is:
 
-1. Extract `TafuraFlow-Release-2-Upload.zip`.
+1. Extract `TafuraFlow-Release-3-Upload.zip`.
 2. Open the `restaurant-website` repository on GitHub.
 3. Upload every extracted file to the repository's top level.
 4. Replace the older files when GitHub asks.
@@ -185,6 +212,14 @@ If GitHub Pages is not already enabled, open **Settings > Pages**, choose **Depl
 - `analytics.html` and `assets/analytics.js` — table, waiter, station, KDS, and service-request analytics
 - `assets/stations.js` — acknowledged KDS tickets, timers, priority, ready alerts, and sold-out actions
 - `supabase/migrations/20260812110000_release_2_floor_service_advanced_kds.sql` — Release 2 database, secure functions, RLS, grants, and Realtime setup
+
+## Release 3 files
+
+- `operations.html` and `assets/operations.js` — staff shifts, attendance, tasks, logbook, cash shifts, reconciliation, and day close
+- `approvals.html` and `assets/approvals.js` — controlled requests, manager decisions, and approval thresholds
+- `billing.html` and `assets/billing.js` — equal-share and item-assigned split bills and offline guest-bill payments
+- `reports.html` and `assets/reports.js` — financial, menu, table, waiter, cash, void, discount, and attendance reports with CSV export
+- `supabase/migrations/20260813110000_release_3_financial_staff_operations.sql` — Release 3 schema, secure functions, RLS policies, grants, audit records, and Realtime setup
 
 ## Security note
 
